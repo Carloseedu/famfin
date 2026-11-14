@@ -1,0 +1,273 @@
+// =============================================================
+// Sistema de Gestão Financeira Familiar
+// Schema desenhado para mapear 1:1 para PostgreSQL (Supabase)
+// Para migrar: trocar provider para "postgresql" e atualizar DATABASE_URL
+// =============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Família: ambiente financeiro isolado (RLS via familyId)
+model Family {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  categories    Category[]
+  accounts      Account[]
+  cards         Card[]
+  transactions  Transaction[]
+  recurring     RecurringBill[]
+  cardPurchases CardPurchase[]
+  budgets       Budget[]
+  goals         Goal[]
+  auditLogs     AuditLog[]
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  passwordHash  String
+  role          String   @default("USER") // ADMIN | USER
+  avatarColor   String   @default("#1e3a8a")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  familyId      String
+  family        Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  sessions           Session[]
+  transactions       Transaction[]      @relation("transactionsCreatedBy")
+  paidByTransactions Transaction[]      @relation("transactionsPaidBy")
+  cards              Card[]              @relation("UserCards")
+  recurring          RecurringBill[]     @relation("UserRecurring")
+  goals              Goal[]              @relation("UserGoals")
+  auditLogs          AuditLog[]          @relation("UserAuditLogs")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+}
+
+// Categorias: despesas e receitas
+model Category {
+  id         String   @id @default(cuid())
+  name       String
+  type       String   // EXPENSE | INCOME
+  icon       String?
+  color      String   @default("#3b82f6")
+  isDefault  Boolean  @default(false)
+  familyId   String
+  family     Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  transactions Transaction[]
+  recurring    RecurringBill[]
+  budgets      Budget[]
+  cardPurchases CardPurchase[]
+
+  @@unique([familyId, name, type])
+}
+
+// Contas bancárias
+model Account {
+  id            String   @id @default(cuid())
+  name          String
+  institution   String?
+  type          String   @default("CHECKING") // CHECKING | SAVINGS | CASH
+  initialBalance Float   @default(0)
+  familyId      String
+  family        Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  transactions Transaction[]
+}
+
+// Cartões de crédito
+model Card {
+  id              String   @id @default(cuid())
+  name            String
+  institution     String?
+  creditLimit     Float    @default(0)
+  closingDay      Int      @default(1)  // dia de fechamento
+  dueDay          Int      @default(10) // dia de vencimento
+  responsibleId   String?
+  responsible     User?    @relation("UserCards", fields: [responsibleId], references: [id])
+  familyId        String
+  family          Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchases       CardPurchase[]
+  transactions    Transaction[]
+}
+
+// Lançamentos (receitas e despesas)
+model Transaction {
+  id              String   @id @default(cuid())
+  type            String   // INCOME | EXPENSE
+  description     String
+  amount          Float
+  transactionDate DateTime // data da movimentação
+  dueDate         DateTime? // data de vencimento
+  paidDate        DateTime? // data de pagamento
+  paymentMethod   String?  // CASH | DEBIT | CREDIT | TRANSFER | PIX
+  status          String   @default("PENDING") // PAID | PENDING | OVERDUE
+  isFixed         Boolean  @default(false)
+  isVariable      Boolean  @default(true)
+  recurrence      String?  // NONE | MONTHLY | WEEKLY | YEARLY
+  installments    Int      @default(1)
+  notes           String?
+  recurrenceGroupId String? // agrupa parcelas geradas de uma recorrente
+  cardPurchaseId  String?
+
+  familyId        String
+  family          Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+
+  accountId       String?
+  account         Account?  @relation(fields: [accountId], references: [id])
+
+  cardId          String?
+  card            Card?     @relation(fields: [cardId], references: [id])
+
+  responsibleId   String?   // quem pagou/recebeu
+  responsible     User?     @relation("transactionsPaidBy", fields: [responsibleId], references: [id])
+
+  createdById     String?
+  createdBy       User?     @relation("transactionsCreatedBy", fields: [createdById], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([familyId])
+  @@index([familyId, transactionDate])
+  @@index([familyId, status])
+  @@index([recurrenceGroupId])
+}
+
+// Contas fixas e recorrentes
+model RecurringBill {
+  id            String   @id @default(cuid())
+  description   String
+  expectedAmount Float
+  dueDay        Int      // dia do vencimento
+  frequency     String   @default("MONTHLY") // MONTHLY | WEEKLY | YEARLY
+  startDate     DateTime
+  endDate       DateTime?
+  lastGenerated DateTime?
+  isActive      Boolean  @default(true)
+
+  familyId      String
+  family        Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id])
+
+  responsibleId String?
+  responsible   User?     @relation("UserRecurring", fields: [responsibleId], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([familyId])
+}
+
+// Compras parceladas em cartão
+model CardPurchase {
+  id              String   @id @default(cuid())
+  description     String
+  totalAmount     Float
+  purchaseDate    DateTime
+  installments    Int      @default(1)
+  installmentAmount Float
+
+  categoryId      String?
+  category        Category? @relation(fields: [categoryId], references: [id])
+
+  cardId          String
+  card            Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  familyId        String
+  family          Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([cardId])
+}
+
+// Orçamento mensal por categoria
+model Budget {
+  id          String   @id @default(cuid())
+  month       Int      // 1-12
+  year        Int
+  limit       Float
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  familyId    String
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([familyId, categoryId, month, year])
+}
+
+// Metas financeiras
+model Goal {
+  id            String   @id @default(cuid())
+  name          String
+  targetAmount  Float
+  currentAmount Float   @default(0)
+  targetDate    DateTime?
+  notes         String?
+  color         String   @default("#1e3a8a")
+  archived      Boolean  @default(false)
+
+  familyId      String
+  family        Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  responsibleId String?
+  responsible   User?    @relation("UserGoals", fields: [responsibleId], references: [id])
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Histórico de alterações importantes
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // CREATE | UPDATE | DELETE
+  entity    String   // Transaction | Category | User | ...
+  entityId  String
+  summary   String
+  familyId  String
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation("UserAuditLogs", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([familyId])
+}
