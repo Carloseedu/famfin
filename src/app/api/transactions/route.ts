@@ -6,7 +6,7 @@ import { z } from "zod"
 // GET /api/transactions?month=11&year=2026&type=EXPENSE&status=PAID&categoryId=...&memberId=...&search=...
 export async function GET(req: NextRequest) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: "NÃ£o autenticado" }, { status: 401 })
+  if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
 
   const url = new URL(req.url)
   const month = url.searchParams.get("month")
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
 const createSchema = z.object({
   type: z.enum(["INCOME", "EXPENSE"]),
-  description: z.string().min(1, "DescriÃ§Ã£o obrigatÃ³ria"),
+  description: z.string().min(1, "Descrição obrigatória"),
   amount: z.number().positive("Valor deve ser positivo"),
   transactionDate: z.string(),
   dueDate: z.string().optional().nullable(),
@@ -76,21 +76,21 @@ const createSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: "NÃ£o autenticado" }, { status: 401 })
+  if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
 
   try {
     const body = await req.json()
     const parsed = createSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.issues[0]?.message || "Dados invÃ¡lidos" },
+        { error: parsed.error.issues[0]?.message || "Dados inválidos" },
         { status: 400 }
       )
     }
     const data = parsed.data
 
-    // ===== DETECTA COMPRA PARCELADA NO CARTÃO =====
-    // CondiÃ§Ã£o: despesa + pagamento no crÃ©dito + cartÃ£o selecionado + mais de 1 parcela
+    // ===== DETECTA COMPRA PARCELADA NO CARTÃO =====
+    // Condição: despesa + pagamento no crédito + cartão selecionado + mais de 1 parcela
     const isInstallmentPurchase =
       data.type === "EXPENSE" &&
       data.cardId &&
@@ -98,18 +98,18 @@ export async function POST(req: NextRequest) {
       data.installments > 1
 
     if (isInstallmentPurchase) {
-      // Busca o cartÃ£o para pegar o dia de vencimento
+      // Busca o cartão para pegar o dia de vencimento
       const card = await db.card.findFirst({
         where: { id: data.cardId, familyId: user.family.id },
       })
       if (!card) {
-        return NextResponse.json({ error: "CartÃ£o nÃ£o encontrado" }, { status: 404 })
+        return NextResponse.json({ error: "Cartão não encontrado" }, { status: 404 })
       }
 
       const installmentAmount = data.amount / data.installments
       const purchaseDate = new Date(data.transactionDate)
 
-      // 1. Cria o registro da compra parcelada (aparece na aba CartÃµes)
+      // 1. Cria o registro da compra parcelada (aparece na aba Cartões)
       const purchase = await db.cardPurchase.create({
         data: {
           description: data.description,
@@ -123,10 +123,10 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // 2. Cria um lanÃ§amento por parcela, cada uma no mÃªs correspondente
-      // Parcela 1: mÃªs da compra (no dia de vencimento do cartÃ£o)
-      // Parcela 2: mÃªs seguinte
-      // Parcela N: mÃªs + (N-1)
+      // 2. Cria um lançamento por parcela, cada uma no mês correspondente
+      // Parcela 1: mês da compra (no dia de vencimento do cartão)
+      // Parcela 2: mês seguinte
+      // Parcela N: mês + (N-1)
       const createdTransactions = []
       for (let i = 0; i < data.installments; i++) {
         const installmentDate = new Date(
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ===== FLUXO NORMAL: Ãºnica transaÃ§Ã£o =====
+    // ===== FLUXO NORMAL: única transação =====
     const transaction = await db.transaction.create({
       data: {
         type: data.type,
@@ -228,6 +228,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ transaction })
   } catch (err: any) {
     console.error("Create transaction error:", err)
-    return NextResponse.json({ error: "Erro ao criar lanÃ§amento" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao criar lançamento" }, { status: 500 })
   }
 }

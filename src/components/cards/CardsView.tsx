@@ -69,7 +69,7 @@ export function CardsView() {
       setCategories((catData.categories || []).filter((c: Category) => (c as any).type === "EXPENSE"))
       setMembers(memData.members || [])
     } catch {
-      toast.error("Erro ao carregar cartÃµes")
+      toast.error("Erro ao carregar cartões")
     } finally {
       setLoading(false)
     }
@@ -87,10 +87,10 @@ export function CardsView() {
       })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error || "Erro ao salvar"); return }
-      toast.success("CartÃ£o cadastrado!")
+      toast.success("Cartão cadastrado!")
       setCardDialogOpen(false)
       load()
-    } catch { toast.error("Erro de conexÃ£o") }
+    } catch { toast.error("Erro de conexão") }
     finally { setSaving(false) }
   }
 
@@ -107,7 +107,7 @@ export function CardsView() {
       toast.success(`Compra registrada! ${data.transactionsCreated} parcela(s) geradas.`)
       setPurchaseDialogOpen(false)
       load()
-    } catch { toast.error("Erro de conexÃ£o") }
+    } catch { toast.error("Erro de conexão") }
     finally { setSaving(false) }
   }
 
@@ -119,11 +119,11 @@ export function CardsView() {
     try {
       const res = await fetch(url, { method: "DELETE" })
       if (!res.ok) { toast.error("Erro ao excluir"); return }
-      toast.success("ExcluÃ­do com sucesso")
+      toast.success("Excluído com sucesso")
       setDeleteId(null)
       setDeleteType(null)
       load()
-    } catch { toast.error("Erro de conexÃ£o") }
+    } catch { toast.error("Erro de conexão") }
   }
 
   const isAdmin = user?.role === "ADMIN"
@@ -131,12 +131,12 @@ export function CardsView() {
   return (
     <div className="space-y-4">
       <SectionTitle
-        title="CartÃµes de crÃ©dito"
-        subtitle="Gerencie cartÃµes, compras parceladas e faturas"
+        title="Cartões de crédito"
+        subtitle="Gerencie cartões, compras parceladas e faturas"
         action={
           isAdmin ? (
             <Button onClick={() => setCardDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" /> Novo cartÃ£o
+              <Plus className="h-4 w-4 mr-2" /> Novo cartão
             </Button>
           ) : undefined
         }
@@ -147,9 +147,9 @@ export function CardsView() {
       ) : cards.length === 0 ? (
         <EmptyState
           icon={CreditCard}
-          title="Nenhum cartÃ£o cadastrado"
-          description="Cadastre seus cartÃµes de crÃ©dito para acompanhar limites e compras parceladas."
-          action={isAdmin ? <Button onClick={() => setCardDialogOpen(true)}><Plus className="h-4 w-4 mr-2" /> Novo cartÃ£o</Button> : undefined}
+          title="Nenhum cartão cadastrado"
+          description="Cadastre seus cartões de crédito para acompanhar limites e compras parceladas."
+          action={isAdmin ? <Button onClick={() => setCardDialogOpen(true)}><Plus className="h-4 w-4 mr-2" /> Novo cartão</Button> : undefined}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -165,10 +165,10 @@ export function CardsView() {
                         <CardTitle className="text-base">{card.name}</CardTitle>
                       </div>
                       <div className="text-xs text-white/70 mt-1">
-                        {card.institution || "â"} Â· Fecha dia {card.closingDay} Â· Vence dia {card.dueDay}
+                        {card.institution || "—"} · Fecha dia {card.closingDay} · Vence dia {card.dueDay}
                       </div>
                       <div className="text-xs text-white/70 mt-0.5">
-                        ResponsÃ¡vel: {card.responsible?.name || "â"}
+                        Responsável: {card.responsible?.name || "—"}
                       </div>
                     </div>
                     {isAdmin && (
@@ -192,7 +192,7 @@ export function CardsView() {
                     </div>
                     <Progress value={usedPercent} className="h-2" />
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Limite disponÃ­vel</span>
+                      <span className="text-muted-foreground">Limite disponível</span>
                       <span className="font-medium text-emerald-600">{formatBRL(card.availableLimit)}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">
@@ -216,8 +216,8 @@ export function CardsView() {
                       <div className="text-sm text-muted-foreground py-3 text-center">
                         Nenhuma compra parcelada registrada.
                         <div className="mt-1 text-xs">
-                          Para registrar uma compra, vÃ¡ em <strong>LanÃ§amentos â Novo lanÃ§amento</strong>,
-                          selecione <strong>CrÃ©dito</strong> como forma de pagamento e informe as parcelas.
+                          Para registrar uma compra, vá em <strong>Lançamentos → Novo lançamento</strong>,
+                          selecione <strong>Crédito</strong> como forma de pagamento e informe as parcelas.
                         </div>
                       </div>
                     ) : (
@@ -228,7 +228,7 @@ export function CardsView() {
                             <div className="min-w-0 flex-1">
                               <div className="text-sm truncate">{p.description}</div>
                               <div className="text-xs text-muted-foreground">
-                                {formatDateBR(p.purchaseDate)} Â· {p.installments}x de {formatBRL(p.installmentAmount)}
+                                {formatDateBR(p.purchaseDate)} · {p.installments}x de {formatBRL(p.installmentAmount)}
                               </div>
                             </div>
                             <div className="text-right">
@@ -278,11 +278,11 @@ export function CardsView() {
       <AlertDialog open={!!deleteId} onOpenChange={(v) => { if (!v) { setDeleteId(null); setDeleteType(null) } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir {deleteType === "card" ? "cartÃ£o" : "compra"}?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir {deleteType === "card" ? "cartão" : "compra"}?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteType === "card"
-                ? "O cartÃ£o serÃ¡ removido. LanÃ§amentos vinculados permanecerÃ£o."
-                : "A compra e todos os lanÃ§amentos das parcelas serÃ£o removidos."}
+                ? "O cartão será removido. Lançamentos vinculados permanecerão."
+                : "A compra e todos os lançamentos das parcelas serão removidos."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -341,17 +341,17 @@ function CardForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Novo cartÃ£o</DialogTitle>
-          <DialogDescription>Cadastre um cartÃ£o de crÃ©dito.</DialogDescription>
+          <DialogTitle>Novo cartão</DialogTitle>
+          <DialogDescription>Cadastre um cartão de crédito.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label htmlFor="name">Nome do cartÃ£o *</Label>
-              <Input id="name" placeholder="Ex: CartÃ£o Nubank" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Label htmlFor="name">Nome do cartão *</Label>
+              <Input id="name" placeholder="Ex: Cartão Nubank" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label htmlFor="institution">InstituiÃ§Ã£o</Label>
+              <Label htmlFor="institution">Instituição</Label>
               <Input id="institution" placeholder="Ex: Nubank" value={institution} onChange={(e) => setInstitution(e.target.value)} />
             </div>
           </div>
@@ -370,7 +370,7 @@ function CardForm({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>ResponsÃ¡vel</Label>
+            <Label>Responsável</Label>
             <Select value={responsibleId} onValueChange={setResponsibleId}>
               <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
               <SelectContent>
@@ -382,7 +382,7 @@ function CardForm({
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Cadastrar cartÃ£o"}</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Cadastrar cartão"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -429,7 +429,7 @@ function PurchaseForm({
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!description.trim() || isNaN(total) || total <= 0 || !selectedCardId) {
-      toast.error("Preencha os campos obrigatÃ³rios")
+      toast.error("Preencha os campos obrigatórios")
       return
     }
     onSave({
@@ -448,11 +448,11 @@ function PurchaseForm({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Registrar compra parcelada</DialogTitle>
-          <DialogDescription>O sistema criarÃ¡ automaticamente um lanÃ§amento por parcela.</DialogDescription>
+          <DialogDescription>O sistema criará automaticamente um lançamento por parcela.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="pdesc">DescriÃ§Ã£o *</Label>
+            <Label htmlFor="pdesc">Descrição *</Label>
             <Input id="pdesc" placeholder="Ex: Geladeira" value={description} onChange={(e) => setDescription(e.target.value)} required />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -471,7 +471,7 @@ function PurchaseForm({
               <Input id="pinst" type="number" min={1} max={48} value={installments} onChange={(e) => setInstallments(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label>CartÃ£o *</Label>
+              <Label>Cartão *</Label>
               <Select value={selectedCardId} onValueChange={setSelectedCardId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -503,7 +503,7 @@ function PurchaseForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>ResponsÃ¡vel</Label>
+              <Label>Responsável</Label>
               <Select value={responsibleId} onValueChange={setResponsibleId}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>

@@ -93,7 +93,7 @@ export function TransactionsView() {
       setAccounts(accData.accounts || [])
       setCards(cardData.cards || [])
     } catch {
-      toast.error("Erro ao carregar lanÃ§amentos")
+      toast.error("Erro ao carregar lançamentos")
     } finally {
       setLoading(false)
     }
@@ -121,16 +121,16 @@ export function TransactionsView() {
       // Mensagem diferente para compra parcelada
       if (data?.isInstallmentPurchase) {
         toast.success(
-          `Compra parcelada criada! ${data.transactionsCreated} lanÃ§amentos gerados (R$ ${data.installmentAmount.toFixed(2)} por mÃªs).`
+          `Compra parcelada criada! ${data.transactionsCreated} lançamentos gerados (R$ ${data.installmentAmount.toFixed(2)} por mês).`
         )
       } else {
-        toast.success(editing ? "LanÃ§amento atualizado!" : "LanÃ§amento criado!")
+        toast.success(editing ? "Lançamento atualizado!" : "Lançamento criado!")
       }
       setDialogOpen(false)
       setEditing(null)
       load()
     } catch {
-      toast.error("Erro de conexÃ£o")
+      toast.error("Erro de conexão")
     } finally {
       setSaving(false)
     }
@@ -145,11 +145,11 @@ export function TransactionsView() {
         toast.error(d.error || "Erro ao excluir")
         return
       }
-      toast.success("LanÃ§amento excluÃ­do")
+      toast.success("Lançamento excluído")
       setDeleteId(null)
       load()
     } catch {
-      toast.error("Erro de conexÃ£o")
+      toast.error("Erro de conexão")
     }
   }
 
@@ -161,10 +161,10 @@ export function TransactionsView() {
         toast.error(data.error || "Erro ao duplicar")
         return
       }
-      toast.success("LanÃ§amento duplicado!")
+      toast.success("Lançamento duplicado!")
       load()
     } catch {
-      toast.error("Erro de conexÃ£o")
+      toast.error("Erro de conexão")
     }
   }
 
@@ -182,7 +182,7 @@ export function TransactionsView() {
       toast.success("Marcado como pago")
       load()
     } catch {
-      toast.error("Erro de conexÃ£o")
+      toast.error("Erro de conexão")
     }
   }
 
@@ -193,12 +193,12 @@ export function TransactionsView() {
   return (
     <div className="space-y-4">
       <SectionTitle
-        title="LanÃ§amentos"
+        title="Lançamentos"
         subtitle={`${monthName(month)} de ${year}`}
         action={
           <Button onClick={() => { setEditing(null); setDialogOpen(true) }}>
             <Plus className="h-4 w-4 mr-2" />
-            Novo lanÃ§amento
+            Novo lançamento
           </Button>
         }
       />
@@ -243,7 +243,7 @@ export function TransactionsView() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por descriÃ§Ã£o..."
+                placeholder="Buscar por descrição..."
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -305,11 +305,11 @@ export function TransactionsView() {
           ) : transactions.length === 0 ? (
             <EmptyState
               icon={Receipt}
-              title="Nenhum lanÃ§amento encontrado"
+              title="Nenhum lançamento encontrado"
               description="Cadastre uma receita ou despesa, ou ajuste os filtros."
               action={
                 <Button onClick={() => { setEditing(null); setDialogOpen(true) }}>
-                  <Plus className="h-4 w-4 mr-2" /> Novo lanÃ§amento
+                  <Plus className="h-4 w-4 mr-2" /> Novo lançamento
                 </Button>
               }
             />
@@ -336,10 +336,10 @@ export function TransactionsView() {
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
                       <span>{formatDateBR(t.transactionDate)}</span>
-                      <span>Â·</span>
+                      <span>·</span>
                       <span style={{ color: t.category?.color }}>{t.category?.name || "Sem categoria"}</span>
-                      <span>Â·</span>
-                      <span>{t.responsible?.name || "â"}</span>
+                      <span>·</span>
+                      <span>{t.responsible?.name || "—"}</span>
                     </div>
                   </div>
 
@@ -368,7 +368,7 @@ export function TransactionsView() {
 
                   <div className="text-right shrink-0 min-w-[100px]">
                     <div className={`text-sm font-semibold ${t.type === "INCOME" ? "text-emerald-600" : "text-foreground"}`}>
-                      {t.type === "INCOME" ? "+" : "â"} {formatBRL(t.amount)}
+                      {t.type === "INCOME" ? "+" : "−"} {formatBRL(t.amount)}
                     </div>
                   </div>
 
@@ -408,7 +408,7 @@ export function TransactionsView() {
         </CardContent>
       </Card>
 
-      {/* Dialog de formulÃ¡rio */}
+      {/* Dialog de formulário */}
       <TransactionForm
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -425,9 +425,9 @@ export function TransactionsView() {
       <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir lanÃ§amento?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta aÃ§Ã£o nÃ£o pode ser desfeita. O lanÃ§amento serÃ¡ permanentemente removido.
+              Esta ação não pode ser desfeita. O lançamento será permanentemente removido.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -523,12 +523,12 @@ function TransactionForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!description.trim() || !amount) {
-      toast.error("Preencha descriÃ§Ã£o e valor")
+      toast.error("Preencha descrição e valor")
       return
     }
     const amt = parseFloat(amount.replace(",", "."))
     if (isNaN(amt) || amt <= 0) {
-      toast.error("Valor invÃ¡lido")
+      toast.error("Valor inválido")
       return
     }
     onSave({
@@ -556,7 +556,7 @@ function TransactionForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar lanÃ§amento" : "Novo lanÃ§amento"}</DialogTitle>
+          <DialogTitle>{editing ? "Editar lançamento" : "Novo lançamento"}</DialogTitle>
           <DialogDescription>
             {editing ? "Atualize os campos abaixo." : "Registre uma nova receita ou despesa."}
           </DialogDescription>
@@ -593,7 +593,7 @@ function TransactionForm({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="description">DescriÃ§Ã£o *</Label>
+              <Label htmlFor="description">Descrição *</Label>
               <Input
                 id="description"
                 placeholder="Ex: Supermercado mensal"
@@ -618,7 +618,7 @@ function TransactionForm({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="transactionDate">Data da movimentaÃ§Ã£o *</Label>
+              <Label htmlFor="transactionDate">Data da movimentação *</Label>
               <Input
                 id="transactionDate"
                 type="date"
@@ -658,7 +658,7 @@ function TransactionForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Integrante responsÃ¡vel</Label>
+              <Label>Integrante responsável</Label>
               <Select value={responsibleId} onValueChange={setResponsibleId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -682,9 +682,9 @@ function TransactionForm({
                 <SelectContent>
                   <SelectItem value="PIX">Pix</SelectItem>
                   <SelectItem value="CASH">Dinheiro</SelectItem>
-                  <SelectItem value="DEBIT">DÃ©bito</SelectItem>
-                  <SelectItem value="CREDIT">CrÃ©dito</SelectItem>
-                  <SelectItem value="TRANSFER">TransferÃªncia</SelectItem>
+                  <SelectItem value="DEBIT">Débito</SelectItem>
+                  <SelectItem value="CREDIT">Crédito</SelectItem>
+                  <SelectItem value="TRANSFER">Transferência</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -704,7 +704,7 @@ function TransactionForm({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Conta bancÃ¡ria</Label>
+              <Label>Conta bancária</Label>
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -717,7 +717,7 @@ function TransactionForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>CartÃ£o</Label>
+              <Label>Cartão</Label>
               <Select value={cardId} onValueChange={setCardId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -740,13 +740,13 @@ function TransactionForm({
               <Switch id="isFixed" checked={isFixed} onCheckedChange={setIsFixed} />
             </div>
             <div className="space-y-2">
-              <Label>RecorrÃªncia</Label>
+              <Label>Recorrência</Label>
               <Select value={recurrence} onValueChange={setRecurrence}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NONE">Sem recorrÃªncia</SelectItem>
+                  <SelectItem value="NONE">Sem recorrência</SelectItem>
                   <SelectItem value="MONTHLY">Mensal</SelectItem>
                   <SelectItem value="WEEKLY">Semanal</SelectItem>
                   <SelectItem value="YEARLY">Anual</SelectItem>
@@ -757,7 +757,7 @@ function TransactionForm({
 
           {type === "EXPENSE" && (
             <div className="space-y-2">
-              <Label htmlFor="installments">NÃºmero de parcelas</Label>
+              <Label htmlFor="installments">Número de parcelas</Label>
               <Input
                 id="installments"
                 type="number"
@@ -766,13 +766,13 @@ function TransactionForm({
                 onChange={(e) => setInstallments(Math.max(1, parseInt(e.target.value) || 1))}
               />
               <p className="text-xs text-muted-foreground">
-                Use 1 para pagamento Ã  vista. Para compras parceladas no cartÃ£o de crÃ©dito,
-                selecione <strong>CrÃ©dito</strong> como forma de pagamento, escolha o cartÃ£o e
-                informe o nÃºmero de parcelas â o sistema vai criar automaticamente um lanÃ§amento
-                por mÃªs.
+                Use 1 para pagamento à vista. Para compras parceladas no cartão de crédito,
+                selecione <strong>Crédito</strong> como forma de pagamento, escolha o cartão e
+                informe o número de parcelas — o sistema vai criar automaticamente um lançamento
+                por mês.
               </p>
 
-              {/* PREVIEW da divisÃ£o quando for compra parcelada no cartÃ£o */}
+              {/* PREVIEW da divisão quando for compra parcelada no cartão */}
               {type === "EXPENSE" &&
                 paymentMethod === "CREDIT" &&
                 cardId &&
@@ -794,8 +794,8 @@ function TransactionForm({
                         <strong>R$ {(parseFloat(amount.replace(",", ".")) / installments).toFixed(2)}</strong>
                       </div>
                       <div className="mt-1 text-blue-700">
-                        SerÃ¡ criado 1 lanÃ§amento por mÃªs, comeÃ§ando no mÃªs selecionado.
-                        A compra tambÃ©m aparecerÃ¡ automaticamente na aba <strong>CartÃµes</strong>.
+                        Será criado 1 lançamento por mês, começando no mês selecionado.
+                        A compra também aparecerá automaticamente na aba <strong>Cartões</strong>.
                       </div>
                     </div>
                   </div>
@@ -804,7 +804,7 @@ function TransactionForm({
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="notes">ObservaÃ§Ãµes</Label>
+            <Label htmlFor="notes">Observações</Label>
             <Textarea
               id="notes"
               placeholder="Notas adicionais..."
@@ -819,7 +819,7 @@ function TransactionForm({
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Salvando..." : editing ? "Salvar alteraÃ§Ãµes" : "Criar lanÃ§amento"}
+              {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar lançamento"}
             </Button>
           </DialogFooter>
         </form>

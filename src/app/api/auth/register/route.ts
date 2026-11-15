@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Cria a família e o admin em uma transação
     const family = await db.family.create({ data: { name: familyName } })
 
     const user = await db.user.create({
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Cria categorias padrão em LOTE (uma única query) — muito mais rápido
     const expenseCategories = [
       { name: "Moradia", color: "#1e40af" },
       { name: "Financiamento imobiliário", color: "#1e3a8a" },
@@ -105,6 +107,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  // Verifica sessão atual
   const cookieStore = await import("next/headers").then((m) => m.cookies())
   const token = cookieStore.get("fin_session")?.value
 

@@ -37,8 +37,8 @@ const createSchema = z.object({
 })
 
 // POST cria uma compra parcelada e gera N lançamentos de EXPENSE (um por parcela)
-// Cada parcela fica no mês correspondente ao seu vencimento, permitindo
-// visualizar os compromissos futuros no dashboard de cada mês.
+// vinculados ao cartão e ao cardPurchaseId. Cada parcela vence no dia de vencimento do cartão
+// após o fechamento correspondente.
 export async function POST(req: NextRequest) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
           type: "EXPENSE",
           description: `${data.description} ${i + 1}/${data.installments}`,
           amount: installmentAmount,
-          transactionDate: installmentDate,
+          transactionDate: installmentDate, // ← data no mês de vencimento, não a data da compra
           dueDate: installmentDate,
           paidDate: null,
           paymentMethod: "CREDIT",
