@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { Wallet, Mail, Lock, User, Users, ArrowRight, ShieldCheck, TrendingUp, PieChart } from "lucide-react"
+import { Wallet, Mail, Lock, User, Users, ArrowRight, ShieldCheck, TrendingUp, PieChart, Ticket } from "lucide-react"
 import { toast } from "sonner"
 import { useAppStore } from "@/lib/store"
 
@@ -27,6 +27,7 @@ export function AuthScreen() {
   const [regName, setRegName] = useState("")
   const [regEmail, setRegEmail] = useState("")
   const [regPassword, setRegPassword] = useState("")
+  const [regInviteCode, setRegInviteCode] = useState("")
   const [regPersist, setRegPersist] = useState(true)
 
   const [recoverEmail, setRecoverEmail] = useState("")
@@ -63,7 +64,8 @@ export function AuthScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          familyName: regFamily, name: regName, email: regEmail, password: regPassword, persist: regPersist,
+          familyName: regFamily, name: regName, email: regEmail, password: regPassword,
+          inviteCode: regInviteCode, persist: regPersist,
         }),
       })
       const data = await res.json().catch(() => null)
@@ -270,6 +272,24 @@ export function AuthScreen() {
                           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                           <Input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" className="pl-9" value={regPassword} onChange={(e) => setRegPassword(e.target.value)} required minLength={6} />
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-invite">Código de convite *</Label>
+                        <div className="relative">
+                          <Ticket className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            id="reg-invite"
+                            placeholder="Ex: FAMFIN-XXXX-XXXX"
+                            className="pl-9 uppercase"
+                            value={regInviteCode}
+                            onChange={(e) => setRegInviteCode(e.target.value.toUpperCase())}
+                            required
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Para se cadastrar você precisa de um código de convite.
+                          Converse com quem te indicou o FamFin.
+                        </p>
                       </div>
                       <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
                         <Switch checked={regPersist} onCheckedChange={setRegPersist} />
