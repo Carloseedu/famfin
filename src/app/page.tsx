@@ -14,6 +14,7 @@ import { GoalsView } from "@/components/goals/GoalsView"
 import { ReportsView } from "@/components/reports/ReportsView"
 import { MembersView } from "@/components/members/MembersView"
 import { SettingsView } from "@/components/settings/SettingsView"
+import { AdminView } from "@/components/admin/AdminView"
 import { LoadingState } from "@/components/common/States"
 import { Wallet } from "lucide-react"
 
@@ -70,6 +71,7 @@ export default function Home() {
           {view === "reports" && <ReportsView />}
           {view === "members" && <MembersView />}
           {view === "settings" && <SettingsView />}
+          {view === "admin" && user?.isSuperAdmin && <AdminView />}
         </main>
       </div>
     </div>
