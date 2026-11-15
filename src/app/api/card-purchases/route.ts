@@ -37,8 +37,8 @@ const createSchema = z.object({
 })
 
 // POST cria uma compra parcelada e gera N lançamentos de EXPENSE (um por parcela)
-// vinculados ao cartão e ao cardPurchaseId. Cada parcela vence no dia de vencimento do cartão
-// após o fechamento correspondente.
+// Cada parcela fica no mês correspondente ao seu vencimento, permitindo
+// visualizar os compromissos futuros no dashboard de cada mês.
 export async function POST(req: NextRequest) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
@@ -72,18 +72,21 @@ export async function POST(req: NextRequest) {
     })
 
     // Gera lançamentos por parcela
+    // REGRA: cada parcela fica no mês correspondente ao seu vencimento.
+    // - Parcela 1: mês da compra (no dia de vencimento do cartão)
+    // - Parcela 2: mês seguinte
+    // - Parcela N: mês + (N-1)
+    // Assim o dashboard de cada mês mostra apenas as parcelas que vencem nele,
+    // permitindo ver os compromissos futuros.
     const purchaseDate = new Date(data.purchaseDate)
     const transactions = []
 
     for (let i = 0; i < data.installments; i++) {
-      // Calcula vencimento da parcela i
-      // Regra: a parcela vence no `dueDay` do mês após o fechamento que ela cai
-      // Simplificação: cada parcela vence no `dueDay` do mês (purchaseDate.month + i + 1)
-      const dueDate = new Date(purchaseDate.getFullYear(), purchaseDate.getMonth() + i + 1, card.dueDay)
-      const dueDateClamped = new Date(
-        dueDate.getFullYear(),
-        dueDate.getMonth(),
-        Math.min(dueDate.getDate(), 28)
+      // Calcula a data de vencimento da parcela i (mês da compra + i)
+      const installmentDate = new Date(
+        purchaseDate.getFullYear(),
+        purchaseDate.getMonth() + i,
+        Math.min(card.dueDay, 28) // clamp para evitar overflow de dia 31
       )
 
       const tx = await db.transaction.create({
@@ -91,8 +94,8 @@ export async function POST(req: NextRequest) {
           type: "EXPENSE",
           description: `${data.description} ${i + 1}/${data.installments}`,
           amount: installmentAmount,
-          transactionDate: purchaseDate,
-          dueDate: dueDateClamped,
+          transactionDate: installmentDate,
+          dueDate: installmentDate,
           paidDate: null,
           paymentMethod: "CREDIT",
           status: "PENDING",
