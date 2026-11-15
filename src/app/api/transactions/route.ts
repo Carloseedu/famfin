@@ -97,6 +97,11 @@ export async function POST(req: NextRequest) {
       data.paymentMethod === "CREDIT" &&
       data.installments > 1
 
+    // ===== DETECTA DESPESA FIXA =====
+    // Condição: isFixed = true → cria 6 lançamentos (mês atual + 5 futuros)
+    // Todos vinculados pelo mesmo recurrenceGroupId
+    const isFixedBill = data.isFixed === true && data.type === "EXPENSE"
+
     if (isInstallmentPurchase) {
       // Busca o cartão para pegar o dia de vencimento
       const card = await db.card.findFirst({
@@ -179,6 +184,71 @@ export async function POST(req: NextRequest) {
         transactionsCreated: createdTransactions.length,
         isInstallmentPurchase: true,
         installmentAmount,
+      })
+    }
+
+    // ===== FLUXO DESPESA FIXA: cria 6 lançamentos (mês atual + 5 futuros) =====
+    if (isFixedBill) {
+      const groupId = `fixed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      const originalDate = new Date(data.transactionDate)
+      const createdFixed: any[] = []
+
+      for (let i = 0; i < 6; i++) {
+        const monthDate = new Date(
+          originalDate.getFullYear(),
+          originalDate.getMonth() + i,
+          originalDate.getDate() > 28 ? 28 : originalDate.getDate()
+        )
+
+        const tx = await db.transaction.create({
+          data: {
+            type: "EXPENSE",
+            description: data.description,
+            amount: data.amount,
+            transactionDate: monthDate,
+            dueDate: data.dueDate
+              ? new Date(
+                  new Date(data.dueDate).getFullYear(),
+                  new Date(data.dueDate).getMonth() + i,
+                  Math.min(new Date(data.dueDate).getDate(), 28)
+                )
+              : monthDate,
+            paidDate: i === 0 && data.status === "PAID" ? new Date() : null,
+            paymentMethod: data.paymentMethod || null,
+            status: i === 0 ? data.status : "PENDING",
+            isFixed: true,
+            isVariable: false,
+            recurrence: data.recurrence || "MONTHLY",
+            installments: 1,
+            notes: data.notes || "Despesa fixa recorrente",
+            recurrenceGroupId: groupId,
+            categoryId: data.categoryId || null,
+            responsibleId: data.responsibleId || null,
+            accountId: data.accountId || null,
+            cardId: data.cardId || null,
+            createdById: user.id,
+            familyId: user.family.id,
+          },
+        })
+        createdFixed.push(tx)
+      }
+
+      await db.auditLog.create({
+        data: {
+          action: "CREATE",
+          entity: "Transaction",
+          entityId: createdFixed[0].id,
+          summary: `Despesa fixa criada: ${data.description} - R$ ${data.amount.toFixed(2)} (6 meses)`,
+          familyId: user.family.id,
+          userId: user.id,
+        },
+      })
+
+      return NextResponse.json({
+        transaction: createdFixed[0],
+        transactionsCreated: 6,
+        isFixedBill: true,
+        groupId,
       })
     }
 

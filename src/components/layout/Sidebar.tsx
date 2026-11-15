@@ -10,7 +10,7 @@ import { getInitials } from "@/lib/format"
 const NAV_ITEMS: { key: ViewKey; label: string; icon: any }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { key: "transactions", label: "Lançamentos", icon: ArrowLeftRight },
-  { key: "bills", label: "Contas a pagar", icon: Receipt },
+  { key: "bills", label: "Contas fixas", icon: Receipt },
   { key: "cards", label: "Cartões", icon: CreditCard },
   { key: "planning", label: "Planejamento", icon: Target },
   { key: "goals", label: "Metas", icon: PieChart },

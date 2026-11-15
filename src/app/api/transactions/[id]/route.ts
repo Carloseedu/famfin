@@ -21,6 +21,7 @@ const updateSchema = z.object({
   installments: z.number().int().min(1).optional(),
   notes: z.string().optional().nullable(),
   paidDate: z.string().optional().nullable(),
+  applyToFuture: z.boolean().optional(), // ← novo: atualiza todos os próximos do mesmo grupo
 })
 
 export async function PATCH(
@@ -97,12 +98,39 @@ export async function PATCH(
       },
     })
 
+    // ===== Se applyToFuture=true e tem recurrenceGroupId, atualiza os próximos =====
+    if (data.applyToFuture && existing.recurrenceGroupId) {
+      const futureUpdate: any = {}
+      if (data.description !== undefined) futureUpdate.description = data.description
+      if (data.amount !== undefined) futureUpdate.amount = data.amount
+      if (data.categoryId !== undefined) futureUpdate.categoryId = data.categoryId || null
+      if (data.responsibleId !== undefined) futureUpdate.responsibleId = data.responsibleId || null
+      if (data.paymentMethod !== undefined) futureUpdate.paymentMethod = data.paymentMethod || null
+      if (data.accountId !== undefined) futureUpdate.accountId = data.accountId || null
+      if (data.cardId !== undefined) futureUpdate.cardId = data.cardId || null
+      if (data.notes !== undefined) futureUpdate.notes = data.notes || null
+
+      if (Object.keys(futureUpdate).length > 0) {
+        // Atualiza todos os lançamentos futuros do mesmo grupo (data >= hoje)
+        await db.transaction.updateMany({
+          where: {
+            familyId: user.family.id,
+            recurrenceGroupId: existing.recurrenceGroupId,
+            transactionDate: { gte: new Date() },
+            status: "PENDING", // só atualiza pendentes (já pagos não)
+            id: { not: id }, // não atualiza o atual de novo
+          },
+          data: futureUpdate,
+        })
+      }
+    }
+
     await db.auditLog.create({
       data: {
         action: "UPDATE",
         entity: "Transaction",
         entityId: id,
-        summary: `Lançamento atualizado: ${existing.description}`,
+        summary: `Lançamento atualizado: ${existing.description}${data.applyToFuture ? " (e futuros)" : ""}`,
         familyId: user.family.id,
         userId: user.id,
       },
@@ -164,6 +192,43 @@ export async function POST(
   const { id } = await params
   const url = new URL(req.url)
   const action = url.searchParams.get("action")
+
+  // ===== CANCELAR CONTA FIXA =====
+  // Exclui todos os lançamentos futuros PENDENTES do mesmo grupo
+  if (action === "cancelFixedGroup") {
+    const existing = await db.transaction.findFirst({
+      where: { id, familyId: user.family.id },
+    })
+    if (!existing) {
+      return NextResponse.json({ error: "Lançamento não encontrado" }, { status: 404 })
+    }
+    if (!existing.recurrenceGroupId) {
+      return NextResponse.json({ error: "Esta não é uma conta fixa recorrente" }, { status: 400 })
+    }
+
+    // Exclui apenas os PENDENTES com data >= hoje (deixa os já pagos como histórico)
+    const result = await db.transaction.deleteMany({
+      where: {
+        familyId: user.family.id,
+        recurrenceGroupId: existing.recurrenceGroupId,
+        status: "PENDING",
+        transactionDate: { gte: new Date() },
+      },
+    })
+
+    await db.auditLog.create({
+      data: {
+        action: "DELETE",
+        entity: "Transaction",
+        entityId: existing.recurrenceGroupId,
+        summary: `Conta fixa cancelada: ${existing.description} (${result.count} lançamentos futuros excluídos)`,
+        familyId: user.family.id,
+        userId: user.id,
+      },
+    })
+
+    return NextResponse.json({ ok: true, deletedCount: result.count })
+  }
 
   if (action !== "duplicate") {
     return NextResponse.json({ error: "Ação inválida" }, { status: 400 })

@@ -2,86 +2,64 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useAppStore } from "@/lib/store"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Receipt, AlertTriangle, CalendarClock, RefreshCw, Trash2, CheckCircle2 } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Receipt, CalendarClock, CheckCircle2, XCircle, TrendingUp, AlertTriangle } from "lucide-react"
 import { formatBRL, formatDateBR, monthName } from "@/lib/format"
 import { EmptyState, LoadingState, SectionTitle } from "@/components/common/States"
 import { toast } from "sonner"
 
-interface Category { id: string; name: string; color: string }
-interface Member { id: string; name: string }
-interface RecurringBill {
-  id: string
-  description: string
-  expectedAmount: number
-  dueDay: number
-  frequency: string
-  startDate: string
-  endDate: string | null
-  lastGenerated: string | null
-  isActive: boolean
-  categoryId: string | null
-  responsibleId: string | null
-  category?: Category
-  responsible?: Member
-}
-
-interface Transaction {
+interface FixedTransaction {
   id: string
   description: string
   amount: number
   transactionDate: string
   dueDate: string | null
   status: string
-  type: string
-  category?: Category
-  responsible?: Member
+  isFixed: boolean
+  recurrenceGroupId: string | null
+  category?: { id: string; name: string; color: string } | null
+  responsible?: { id: string; name: string; avatarColor: string } | null
 }
 
 export function BillsView() {
   const { month, year } = useAppStore()
-  const [tab, setTab] = useState("pending")
-  const [recurring, setRecurring] = useState<RecurringBill[]>([])
-  const [pending, setPending] = useState<Transaction[]>([])
-  const [overdue, setOverdue] = useState<Transaction[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [members, setMembers] = useState<Member[]>([])
+  const [fixedThisMonth, setFixedThisMonth] = useState<FixedTransaction[]>([])
+  const [fixedUpcoming, setFixedUpcoming] = useState<FixedTransaction[]>([])
   const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [saving, setSaving] = useState(false)
+  const [cancelTx, setCancelTx] = useState<FixedTransaction | null>(null)
+  const [canceling, setCanceling] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [recRes, txRes, catRes, memRes] = await Promise.all([
-        fetch("/api/recurring"),
-        fetch(`/api/transactions?month=${month}&year=${year}`),
-        fetch("/api/categories"),
-        fetch("/api/members"),
-      ])
-      const recData = await recRes.json()
-      const txData = await txRes.json()
-      const catData = await catRes.json()
-      const memData = await memRes.json()
+      // Busca TODAS as transações fixas dos próximos 6 meses (incluindo o atual)
+      const start = new Date(year, month - 1, 1)
+      const end = new Date(year, month + 5, 1) // 6 meses à frente (mês atual + 5)
 
-      setRecurring(recData.recurring || [])
-      setCategories(catData.categories || [])
-      setMembers(memData.members || [])
+      const res = await fetch(
+        `/api/transactions?month=${month}&year=${year}`
+      )
+      const data = await res.json()
+      const allFixed = (data.transactions || []).filter((t: FixedTransaction) => t.isFixed)
+      setFixedThisMonth(allFixed)
 
-      const txs = txData.transactions || []
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      setPending(txs.filter((t: Transaction) => t.status !== "PAID" && (!t.dueDate || new Date(t.dueDate) >= today)))
-      setOverdue(txs.filter((t: Transaction) => t.status !== "PAID" && t.dueDate && new Date(t.dueDate) < today))
+      // Para as próximas, buscamos mês a mês
+      const upcoming: FixedTransaction[] = []
+      for (let i = 1; i <= 5; i++) {
+        const m = month + i - 1 // 0-indexed
+        const y = year + Math.floor(m / 12)
+        const mm = (m % 12) + 1
+        const r = await fetch(`/api/transactions?month=${mm}&year=${y}`)
+        const d = await r.json()
+        const fixed = (d.transactions || []).filter((t: FixedTransaction) => t.isFixed)
+        upcoming.push(...fixed)
+      }
+      setFixedUpcoming(upcoming)
     } catch {
-      toast.error("Erro ao carregar contas")
+      toast.error("Erro ao carregar contas fixas")
     } finally {
       setLoading(false)
     }
@@ -89,7 +67,7 @@ export function BillsView() {
 
   useEffect(() => { load() }, [load])
 
-  async function handleMarkPaid(tx: Transaction) {
+  async function handleMarkPaid(tx: FixedTransaction) {
     try {
       const res = await fetch(`/api/transactions/${tx.id}`, {
         method: "PATCH",
@@ -102,339 +80,248 @@ export function BillsView() {
     } catch { toast.error("Erro de conexão") }
   }
 
-  async function handleGenerate(bill: RecurringBill) {
+  async function handleCancelFixed() {
+    if (!cancelTx) return
+    setCanceling(true)
     try {
-      const res = await fetch(`/api/recurring/${bill.id}?action=generate`, { method: "POST" })
-      const data = await res.json()
-      if (!res.ok) { toast.error("Erro ao gerar"); return }
-      toast.success(data.message || "Lançamento gerado")
-      load()
-    } catch { toast.error("Erro de conexão") }
-  }
-
-  async function handleDeleteRecurring(bill: RecurringBill) {
-    if (!confirm(`Desativar a conta recorrente "${bill.description}"?`)) return
-    try {
-      const res = await fetch(`/api/recurring/${bill.id}`, { method: "DELETE" })
-      if (!res.ok) { toast.error("Erro ao desativar"); return }
-      toast.success("Conta recorrente desativada")
-      load()
-    } catch { toast.error("Erro de conexão") }
-  }
-
-  async function handleSave(values: any) {
-    setSaving(true)
-    try {
-      const res = await fetch("/api/recurring", {
+      const res = await fetch(`/api/transactions/${cancelTx.id}?action=cancelFixedGroup`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error || "Erro ao salvar"); return }
-      toast.success("Conta recorrente criada")
-      setDialogOpen(false)
+      if (!res.ok) { toast.error(data.error || "Erro ao cancelar"); return }
+      toast.success(`Conta fixa cancelada! ${data.deletedCount} lançamento(s) futuro(s) excluído(s).`)
+      setCancelTx(null)
       load()
     } catch { toast.error("Erro de conexão") }
-    finally { setSaving(false) }
+    finally { setCanceling(false) }
   }
 
-  const totalPending = pending.reduce((s, t) => s + t.amount, 0)
-  const totalOverdue = overdue.reduce((s, t) => s + t.amount, 0)
+  const totalThisMonth = fixedThisMonth.reduce((s, t) => s + t.amount, 0)
+  const paidThisMonth = fixedThisMonth.filter((t) => t.status === "PAID")
+  const pendingThisMonth = fixedThisMonth.filter((t) => t.status !== "PAID")
+  const totalPaid = paidThisMonth.reduce((s, t) => s + t.amount, 0)
+  const totalPending = pendingThisMonth.reduce((s, t) => s + t.amount, 0)
+
+  // Agrupar próximas por mês
+  const upcomingByMonth: Record<string, FixedTransaction[]> = {}
+  for (const tx of fixedUpcoming) {
+    const d = new Date(tx.transactionDate)
+    const key = `${monthName(d.getMonth() + 1)} ${d.getFullYear()}`
+    if (!upcomingByMonth[key]) upcomingByMonth[key] = []
+    upcomingByMonth[key].push(tx)
+  }
 
   return (
     <div className="space-y-4">
       <SectionTitle
-        title="Contas a pagar"
-        subtitle={`${monthName(month)} de ${year}`}
-        action={
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova conta recorrente
-          </Button>
-        }
+        title="Contas fixas"
+        subtitle={`${monthName(month)} de ${year} — despesas mensais recorrentes`}
       />
 
+      {/* Cards de resumo */}
       <div className="grid gap-3 sm:grid-cols-3">
         <Card className="card-hover">
           <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground">A pagar (pendentes)</div>
+            <div className="text-xs text-muted-foreground">Total de contas fixas do mês</div>
+            <div className="text-xl font-bold text-blue-600">{formatBRL(totalThisMonth)}</div>
+            <div className="text-xs text-muted-foreground mt-1">{fixedThisMonth.length} conta(s)</div>
+          </CardContent>
+        </Card>
+        <Card className="card-hover">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Já pagas</div>
+            <div className="text-xl font-bold text-emerald-600">{formatBRL(totalPaid)}</div>
+            <div className="text-xs text-muted-foreground mt-1">{paidThisMonth.length} conta(s)</div>
+          </CardContent>
+        </Card>
+        <Card className="card-hover">
+          <CardContent className="p-4">
+            <div className="text-xs text-muted-foreground">Pendentes</div>
             <div className="text-xl font-bold text-amber-600">{formatBRL(totalPending)}</div>
-            <div className="text-xs text-muted-foreground mt-1">{pending.length} conta(s)</div>
-          </CardContent>
-        </Card>
-        <Card className="card-hover">
-          <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground">Atrasadas</div>
-            <div className="text-xl font-bold text-red-600">{formatBRL(totalOverdue)}</div>
-            <div className="text-xs text-muted-foreground mt-1">{overdue.length} conta(s)</div>
-          </CardContent>
-        </Card>
-        <Card className="card-hover">
-          <CardContent className="p-4">
-            <div className="text-xs text-muted-foreground">Contas recorrentes ativas</div>
-            <div className="text-xl font-bold text-blue-600">{recurring.length}</div>
-            <div className="text-xs text-muted-foreground mt-1">configurada(s)</div>
+            <div className="text-xs text-muted-foreground mt-1">{pendingThisMonth.length} conta(s)</div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="pending">
-            Pendentes ({pending.length})
-          </TabsTrigger>
-          <TabsTrigger value="overdue">
-            Atrasadas ({overdue.length})
-          </TabsTrigger>
-          <TabsTrigger value="recurring">
-            Recorrentes ({recurring.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* Lista de contas fixas do mês */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock className="h-5 w-5 text-blue-600" />
+            <h3 className="font-semibold text-base">Contas fixas — {monthName(month)} de {year}</h3>
+          </div>
 
-        <TabsContent value="pending" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              {loading ? <LoadingState /> :
-                pending.length === 0 ? (
-                  <EmptyState icon={CheckCircle2} title="Nenhuma conta pendente" description="Todas as contas do mês estão pagas." />
-                ) : (
-                  <div className="divide-y divide-border">
-                    {pending.map((t) => (
-                      <BillRow key={t.id} tx={t} onMarkPaid={() => handleMarkPaid(t)} />
+          {loading ? (
+            <LoadingState />
+          ) : fixedThisMonth.length === 0 ? (
+            <EmptyState
+              icon={Receipt}
+              title="Nenhuma conta fixa neste mês"
+              description="Cadastre uma despesa marcando o switch 'Despesa fixa' no módulo Lançamentos. O sistema cria automaticamente 6 meses à frente."
+              className="py-6"
+            />
+          ) : (
+            <div className="divide-y divide-border">
+              {fixedThisMonth.map((tx) => (
+                <FixedRow
+                  key={tx.id}
+                  tx={tx}
+                  onMarkPaid={() => handleMarkPaid(tx)}
+                  onCancel={() => setCancelTx(tx)}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Próximos meses */}
+      {!loading && Object.keys(upcomingByMonth).length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUp className="h-5 w-5 text-emerald-600" />
+              <h3 className="font-semibold text-base">Próximos meses (já programadas)</h3>
+            </div>
+            <div className="space-y-4">
+              {Object.entries(upcomingByMonth).map(([monthLabel, transactions]) => (
+                <div key={monthLabel}>
+                  <div className="text-sm font-medium text-muted-foreground mb-2">{monthLabel}</div>
+                  <div className="divide-y divide-border rounded-lg border">
+                    {transactions.map((tx) => (
+                      <FixedRow
+                        key={tx.id}
+                        tx={tx}
+                        onMarkPaid={() => handleMarkPaid(tx)}
+                        onCancel={() => setCancelTx(tx)}
+                        compact
+                      />
                     ))}
                   </div>
-                )
-              }
-            </CardContent>
-          </Card>
-        </TabsContent>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="overdue" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              {loading ? <LoadingState /> :
-                overdue.length === 0 ? (
-                  <EmptyState icon={CheckCircle2} title="Nenhuma conta atrasada" description="Parabéns! Todas as contas estão em dia." />
-                ) : (
-                  <div className="divide-y divide-border">
-                    {overdue.map((t) => (
-                      <BillRow key={t.id} tx={t} onMarkPaid={() => handleMarkPaid(t)} overdue />
-                    ))}
-                  </div>
-                )
-              }
-            </CardContent>
-          </Card>
-        </TabsContent>
+      {/* Dica de uso */}
+      {!loading && fixedThisMonth.length === 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4 text-sm text-blue-900">
+            <div className="font-medium mb-1">💡 Como usar contas fixas</div>
+            <div className="text-blue-800 text-xs space-y-1">
+              <div>1. Vá em <strong>Lançamentos → Novo lançamento</strong></div>
+              <div>2. Cadastre uma despesa (ex: "Aluguel", "Internet", "Escola")</div>
+              <div>3. Marque o switch <strong>"Despesa fixa"</strong></div>
+              <div>4. O sistema cria automaticamente 6 lançamentos (um por mês)</div>
+              <div>5. Acompanhe a evolução no dashboard e cancele quando quiser aqui nesta aba</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-        <TabsContent value="recurring" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              {loading ? <LoadingState /> :
-                recurring.length === 0 ? (
-                  <EmptyState
-                    icon={RefreshCw}
-                    title="Nenhuma conta recorrente"
-                    description="Cadastre suas contas fixas para gerar lançamentos automaticamente."
-                    action={<Button onClick={() => setDialogOpen(true)}><Plus className="h-4 w-4 mr-2" /> Nova conta recorrente</Button>}
-                  />
-                ) : (
-                  <div className="divide-y divide-border">
-                    {recurring.map((b) => (
-                      <div key={b.id} className="flex items-center gap-3 p-4">
-                        <div className="h-10 w-10 rounded-full flex items-center justify-center bg-blue-50">
-                          <RefreshCw className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{b.description}</div>
-                          <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                            <span>Venc. dia {b.dueDay}</span>
-                            <span>·</span>
-                            <span>{b.category?.name || "—"}</span>
-                            <span>·</span>
-                            <span>{b.responsible?.name || "—"}</span>
-                            <Badge variant="outline" className="text-xs">{b.frequency}</Badge>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-semibold">{formatBRL(b.expectedAmount)}</div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button size="sm" variant="outline" onClick={() => handleGenerate(b)}>
-                            Gerar
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => handleDeleteRecurring(b)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )
-              }
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      <RecurringForm
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        categories={categories.filter((c) => c.type === "EXPENSE" || (c as any).type === "EXPENSE")}
-        members={members}
-        onSave={handleSave}
-        saving={saving}
-        defaultDate={`${year}-${String(month).padStart(2, "0")}-01`}
-      />
+      <AlertDialog open={!!cancelTx} onOpenChange={(v) => !v && setCancelTx(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar conta fixa?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancelTx && (
+                <>
+                  Todos os lançamentos <strong>futuros não pagos</strong> de
+                  &quot;{cancelTx.description}&quot; serão excluídos automaticamente.
+                  Lançamentos já pagos ficam como histórico.
+                  Esta ação não pode ser desfeita.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Manter conta fixa</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelFixed}
+              disabled={canceling}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {canceling ? "Cancelando..." : "Sim, cancelar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
 
-function BillRow({ tx, onMarkPaid, overdue }: { tx: Transaction; onMarkPaid: () => void; overdue?: boolean }) {
+function FixedRow({
+  tx,
+  onMarkPaid,
+  onCancel,
+  compact,
+}: {
+  tx: FixedTransaction
+  onMarkPaid: () => void
+  onCancel: () => void
+  compact?: boolean
+}) {
+  const isOverdue = tx.status !== "PAID" && tx.dueDate && new Date(tx.dueDate) < new Date()
   return (
-    <div className="flex items-center gap-3 p-4">
-      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${overdue ? "bg-red-50" : "bg-amber-50"}`}>
-        {overdue ? <AlertTriangle className="h-4 w-4 text-red-600" /> : <CalendarClock className="h-4 w-4 text-amber-600" />}
+    <div className={`flex items-center gap-3 ${compact ? "p-2.5" : "p-3"}`}>
+      <div
+        className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
+          tx.status === "PAID" ? "bg-emerald-50" : isOverdue ? "bg-red-50" : "bg-amber-50"
+        }`}
+      >
+        {tx.status === "PAID" ? (
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+        ) : isOverdue ? (
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+        ) : (
+          <CalendarClock className="h-4 w-4 text-amber-600" />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium truncate">{tx.description}</div>
-        <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-          <span style={{ color: tx.category?.color }}>{tx.category?.name || "—"}</span>
-          <span>·</span>
+        <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
           <span>Venc: {tx.dueDate ? formatDateBR(tx.dueDate) : "—"}</span>
           <span>·</span>
-          <span>{tx.responsible?.name || "—"}</span>
+          <span style={{ color: tx.category?.color }}>{tx.category?.name || "—"}</span>
+          {tx.responsible && (
+            <>
+              <span>·</span>
+              <span>{tx.responsible.name}</span>
+            </>
+          )}
         </div>
       </div>
-      <div className="text-right">
+      <div className="text-right shrink-0">
         <div className="text-sm font-semibold">{formatBRL(tx.amount)}</div>
+        <Badge
+          variant="outline"
+          className={`text-xs mt-0.5 ${
+            tx.status === "PAID" ? "border-emerald-200 text-emerald-700 bg-emerald-50" :
+            isOverdue ? "border-red-200 text-red-700 bg-red-50" :
+            "border-amber-200 text-amber-700 bg-amber-50"
+          }`}
+        >
+          {tx.status === "PAID" ? "Pago" : isOverdue ? "Vencido" : "Pendente"}
+        </Badge>
       </div>
-      <Button size="sm" variant="outline" onClick={onMarkPaid}>
-        Marcar pago
-      </Button>
+      <div className="flex items-center gap-1 shrink-0">
+        {tx.status !== "PAID" && (
+          <Button size="sm" variant="outline" onClick={onMarkPaid} className="h-7 text-xs">
+            Pagar
+          </Button>
+        )}
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-7 w-7 text-red-600"
+          onClick={onCancel}
+          title="Cancelar conta fixa (exclui futuros não pagos)"
+        >
+          <XCircle className="h-3.5 w-3.5" />
+        </Button>
+      </div>
     </div>
-  )
-}
-
-function RecurringForm({
-  open, onOpenChange, categories, members, onSave, saving, defaultDate,
-}: {
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  categories: Category[]
-  members: Member[]
-  onSave: (v: any) => void
-  saving: boolean
-  defaultDate: string
-}) {
-  const [description, setDescription] = useState("")
-  const [expectedAmount, setExpectedAmount] = useState("")
-  const [dueDay, setDueDay] = useState("10")
-  const [frequency, setFrequency] = useState("MONTHLY")
-  const [startDate, setStartDate] = useState(defaultDate)
-  const [categoryId, setCategoryId] = useState("")
-  const [responsibleId, setResponsibleId] = useState("")
-
-  useEffect(() => {
-    if (open) {
-      setDescription("")
-      setExpectedAmount("")
-      setDueDay("10")
-      setFrequency("MONTHLY")
-      setStartDate(defaultDate)
-      setCategoryId("")
-      setResponsibleId("")
-    }
-  }, [open, defaultDate])
-
-  function submit(e: React.FormEvent) {
-    e.preventDefault()
-    const amt = parseFloat(expectedAmount.replace(",", "."))
-    if (!description.trim() || isNaN(amt) || amt <= 0) {
-      toast.error("Preencha descrição e valor")
-      return
-    }
-    onSave({
-      description: description.trim(),
-      expectedAmount: amt,
-      dueDay: parseInt(dueDay, 10),
-      frequency,
-      startDate,
-      categoryId: categoryId || null,
-      responsibleId: responsibleId || null,
-    })
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Nova conta recorrente</DialogTitle>
-          <DialogDescription>Cadastre contas fixas para gerar lançamentos mensais automaticamente.</DialogDescription>
-        </DialogHeader>
-        <form onSubmit={submit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="desc">Descrição *</Label>
-            <Input id="desc" placeholder="Ex: Internet" value={description} onChange={(e) => setDescription(e.target.value)} required />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="amt">Valor previsto (R$) *</Label>
-              <Input id="amt" type="text" inputMode="decimal" placeholder="0,00" value={expectedAmount} onChange={(e) => setExpectedAmount(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="dueDay">Dia do vencimento *</Label>
-              <Input id="dueDay" type="number" min={1} max={28} value={dueDay} onChange={(e) => setDueDay(e.target.value)} required />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Frequência</Label>
-              <Select value={frequency} onValueChange={setFrequency}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="MONTHLY">Mensal</SelectItem>
-                  <SelectItem value="WEEKLY">Semanal</SelectItem>
-                  <SelectItem value="YEARLY">Anual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Data de início *</Label>
-              <Input id="startDate" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Responsável</Label>
-              <Select value={responsibleId} onValueChange={setResponsibleId}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Criar recorrente"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }

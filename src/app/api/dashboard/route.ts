@@ -109,6 +109,7 @@ export async function GET(req: NextRequest) {
 
   // Evolução dos últimos 6 meses (receitas vs despesas)
   const evolution = []
+  const fixedEvolution = [] // ← novo: contas fixas por mês
   for (let i = 5; i >= 0; i--) {
     const m = month - 1 - i
     const y = year
@@ -121,15 +122,20 @@ export async function GET(req: NextRequest) {
         familyId: user.family.id,
         transactionDate: { gte: evStart, lt: evEnd },
       },
-      select: { type: true, amount: true },
+      select: { type: true, amount: true, isFixed: true },
     })
     const inc = monthTx.filter((t) => t.type === "INCOME").reduce((s, t) => s + t.amount, 0)
     const exp = monthTx.filter((t) => t.type === "EXPENSE").reduce((s, t) => s + t.amount, 0)
+    const fixedExp = monthTx.filter((t) => t.type === "EXPENSE" && t.isFixed).reduce((s, t) => s + t.amount, 0)
     evolution.push({
       month: monthLabel.replace(".", ""),
       receitas: inc,
       despesas: exp,
       saldo: inc - exp,
+    })
+    fixedEvolution.push({
+      month: monthLabel.replace(".", ""),
+      total: fixedExp,
     })
   }
 
@@ -192,6 +198,7 @@ export async function GET(req: NextRequest) {
       expensesByMember: Object.values(expensesByMember).sort((a, b) => b.value - a.value),
       incomeByMember: Object.values(incomeByMember).sort((a, b) => b.value - a.value),
       evolution,
+      fixedEvolution,
       comparison: {
         current: { income: totalIncome, expense: totalExpense, balance },
         previous: { income: prevIncome, expense: prevExpense, balance: prevIncome - prevExpense },

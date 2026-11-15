@@ -123,6 +123,10 @@ export function TransactionsView() {
         toast.success(
           `Compra parcelada criada! ${data.transactionsCreated} lançamentos gerados (R$ ${data.installmentAmount.toFixed(2)} por mês).`
         )
+      } else if (data?.isFixedBill) {
+        toast.success(
+          `Despesa fixa criada! ${data.transactionsCreated} lançamentos gerados (um por mês, durante 6 meses).`
+        )
       } else {
         toast.success(editing ? "Lançamento atualizado!" : "Lançamento criado!")
       }
@@ -480,6 +484,7 @@ function TransactionForm({
   const [cardId, setCardId] = useState("")
   const [status, setStatus] = useState("PENDING")
   const [isFixed, setIsFixed] = useState(false)
+  const [applyToFuture, setApplyToFuture] = useState(false)
   const [recurrence, setRecurrence] = useState("NONE")
   const [installments, setInstallments] = useState(1)
   const [notes, setNotes] = useState("")
@@ -498,6 +503,7 @@ function TransactionForm({
       setCardId(editing.cardId || "")
       setStatus(editing.status)
       setIsFixed(editing.isFixed)
+      setApplyToFuture(false)
       setRecurrence(editing.recurrence || "NONE")
       setInstallments(editing.installments)
       setNotes(editing.notes || "")
@@ -514,6 +520,7 @@ function TransactionForm({
       setCardId("")
       setStatus("PENDING")
       setIsFixed(false)
+      setApplyToFuture(false)
       setRecurrence("NONE")
       setInstallments(1)
       setNotes("")
@@ -549,6 +556,7 @@ function TransactionForm({
       installments,
       notes: notes || null,
       paidDate: status === "PAID" ? new Date().toISOString() : null,
+      ...(editing && isFixed && applyToFuture ? { applyToFuture: true } : {}),
     })
   }
 
@@ -732,12 +740,48 @@ function TransactionForm({
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <Label htmlFor="isFixed" className="font-medium">Despesa fixa</Label>
-                <p className="text-xs text-muted-foreground">Marque para despesas recorrentes</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <Label htmlFor="isFixed" className="font-medium">Despesa fixa</Label>
+                  <p className="text-xs text-muted-foreground">Marque para despesas mensais recorrentes</p>
+                </div>
+                <Switch id="isFixed" checked={isFixed} onCheckedChange={setIsFixed} />
               </div>
-              <Switch id="isFixed" checked={isFixed} onCheckedChange={setIsFixed} />
+
+              {/* PREVIEW da conta fixa: mostra que serão criados 6 lançamentos */}
+              {isFixed && type === "EXPENSE" && !editing && (
+                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-900">
+                  <div className="font-semibold mb-1 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                    Conta fixa recorrente
+                  </div>
+                  <div className="text-xs">
+                    Serão criados <strong>6 lançamentos</strong> (um por mês, começando no mês selecionado).
+                    Você poderá acompanhar a evolução no dashboard e cancelar a qualquer momento na aba
+                    <strong> Contas fixas</strong>.
+                  </div>
+                </div>
+              )}
+
+              {/* Checkbox: aplicar aos próximos (apenas ao editar uma fixa) */}
+              {editing && isFixed && (
+                <label className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={applyToFuture}
+                    onChange={(e) => setApplyToFuture(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <div className="font-medium">Aplicar também aos próximos meses</div>
+                    <div className="text-xs text-blue-700 mt-0.5">
+                      Marque para atualizar todos os lançamentos futuros desta conta fixa
+                      (descrição, valor, categoria, etc.). Lançamentos já pagos não serão alterados.
+                    </div>
+                  </div>
+                </label>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Recorrência</Label>

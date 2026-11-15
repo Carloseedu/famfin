@@ -30,6 +30,7 @@ interface DashboardData {
     expensesByMember: { name: string; value: number; color: string }[]
     incomeByMember: { name: string; value: number; color: string }[]
     evolution: { month: string; receitas: number; despesas: number; saldo: number }[]
+    fixedEvolution: { month: string; total: number }[]
     comparison: {
       current: { income: number; expense: number; balance: number }
       previous: { income: number; expense: number; balance: number }
@@ -295,6 +296,39 @@ export function DashboardView() {
               <Line type="monotone" dataKey="saldo" stroke="#1e3a8a" strokeWidth={2} dot={{ r: 4 }} name="Saldo" />
             </ComposedChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Evolução das contas fixas (6 meses) */}
+      <Card className="card-hover">
+        <CardHeader>
+          <CardTitle className="text-base">Evolução das contas fixas (6 meses)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {chart.fixedEvolution.every((m) => m.total === 0) ? (
+            <EmptyState
+              icon={Receipt}
+              title="Sem contas fixas no período"
+              description="Marque suas despesas como 'fixa' no formulário de Lançamentos para acompanhar a evolução."
+              className="py-6"
+            />
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={chart.fixedEvolution}>
+                <defs>
+                  <linearGradient id="colorFixed" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0f766e" stopOpacity={0.9} />
+                    <stop offset="95%" stopColor="#0f766e" stopOpacity={0.5} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+                <Tooltip formatter={(value: any) => formatBRL(value)} contentStyle={{ borderRadius: 8 }} />
+                <Bar dataKey="total" fill="url(#colorFixed)" radius={[6, 6, 0, 0]} name="Contas fixas" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 
