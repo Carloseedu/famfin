@@ -1,6 +1,6 @@
 "use client"
 
-import { Wallet, LayoutDashboard, ArrowLeftRight, Receipt, CreditCard, Target, PieChart, Users, Settings, X, LogOut } from "lucide-react"
+import { Wallet, LayoutDashboard, ArrowLeftRight, Receipt, CreditCard, Target, PieChart, Users, Settings, X, LogOut, Shield } from "lucide-react"
 import { useAppStore, ViewKey } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,11 @@ const NAV_ITEMS: { key: ViewKey; label: string; icon: any }[] = [
 
 export function Sidebar() {
   const { view, setView, sidebarOpen, setSidebar, user, family } = useAppStore()
+
+  // Só mostra item Admin se for super admin (dono da plataforma)
+  const visibleItems = user?.isSuperAdmin
+    ? [...NAV_ITEMS, { key: "admin" as ViewKey, label: "Admin", icon: Shield }]
+    : NAV_ITEMS
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" })
@@ -67,7 +72,7 @@ export function Sidebar() {
 
         {/* Navegação */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {NAV_ITEMS.map((item) => (
+          {visibleItems.map((item) => (
             <button
               key={item.key}
               onClick={() => setView(item.key)}
@@ -80,6 +85,11 @@ export function Sidebar() {
             >
               <item.icon className="h-4.5 w-4.5 shrink-0" style={{ width: "1.125rem", height: "1.125rem" }} />
               {item.label}
+              {item.key === "admin" && (
+                <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold uppercase">
+                  Dono
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -98,7 +108,7 @@ export function Sidebar() {
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium text-white truncate">{user?.name}</div>
               <div className="text-xs text-white/50 truncate">
-                {user?.role === "ADMIN" ? "Administrador" : "Usuário"}
+                {user?.isSuperAdmin ? "Super Admin" : user?.role === "ADMIN" ? "Administrador" : "Usuário"}
               </div>
             </div>
           </div>
