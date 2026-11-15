@@ -38,6 +38,7 @@ model User {
   name          String
   passwordHash  String
   role          String   @default("USER") // ADMIN | USER
+  isSuperAdmin  Boolean  @default(false)  // dono da plataforma (você)
   avatarColor   String   @default("#1e3a8a")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -270,4 +271,20 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([familyId])
+}
+
+// Códigos de convite para controlar quem pode se cadastrar
+// Gerados pelo super admin no painel administrativo
+model InviteCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  maxUses     Int       @default(1) // 0 = ilimitado
+  uses        Int       @default(0)
+  active      Boolean   @default(true)
+  expiresAt   DateTime?
+  note        String?   // etiqueta opcional (ex: "Amigos do João")
+  createdBy   String?   // ID do super admin que gerou
+  createdAt   DateTime  @default(now())
+
+  @@index([code])
 }
