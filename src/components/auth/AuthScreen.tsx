@@ -19,8 +19,8 @@ export function AuthScreen() {
   const setUser = useAppStore((s) => s.setUser)
   const router = useRouter()
 
-  const [loginEmail, setLoginEmail] = useState("admin@familia.com")
-  const [loginPassword, setLoginPassword] = useState("admin123")
+  const [loginEmail, setLoginEmail] = useState("")
+  const [loginPassword, setLoginPassword] = useState("")
   const [loginPersist, setLoginPersist] = useState(true)
 
   const [regFamily, setRegFamily] = useState("")
@@ -40,16 +40,16 @@ export function AuthScreen() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: loginEmail, password: loginPassword, persist: loginPersist }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        toast.error(data.error || "Erro ao entrar")
+        toast.error(data?.error || "E-mail ou senha incorretos")
         return
       }
       setUser(data.user, data.family)
       toast.success(`Bem-vindo, ${data.user.name}!`)
       router.refresh()
     } catch {
-      toast.error("Erro de conexão")
+      toast.error("Erro de conexão. Verifique sua internet.")
     } finally {
       setLoading(false)
     }
@@ -66,16 +66,16 @@ export function AuthScreen() {
           familyName: regFamily, name: regName, email: regEmail, password: regPassword, persist: regPersist,
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        toast.error(data.error || "Erro ao cadastrar")
+        toast.error(data?.error || "Erro ao cadastrar")
         return
       }
       setUser(data.user, data.family)
       toast.success(`Conta criada! Bem-vindo, ${data.user.name}!`)
       router.refresh()
     } catch {
-      toast.error("Erro de conexão")
+      toast.error("Erro de conexão. Verifique sua internet.")
     } finally {
       setLoading(false)
     }
@@ -230,9 +230,6 @@ export function AuthScreen() {
                         {loading ? "Entrando..." : "Entrar"}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
-                      <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground">
-                        <strong>Conta demo:</strong> admin@familia.com / admin123
-                      </div>
                     </form>
                   </CardContent>
                 </Card>
