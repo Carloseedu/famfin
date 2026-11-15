@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Plus, Search, Pencil, Trash2, Copy, Filter, ArrowDownRight, ArrowUpRight, Receipt } from "lucide-react"
+import { Plus, Search, Pencil, Trash2, Copy, Filter, ArrowDownRight, ArrowUpRight, Receipt, TrendingUp } from "lucide-react"
 import { formatBRL, formatDateBR, monthName } from "@/lib/format"
 import { EmptyState, LoadingState, SectionTitle } from "@/components/common/States"
 import { toast } from "sonner"
@@ -93,7 +93,7 @@ export function TransactionsView() {
       setAccounts(accData.accounts || [])
       setCards(cardData.cards || [])
     } catch {
-      toast.error("Erro ao carregar lançamentos")
+      toast.error("Erro ao carregar lanÃ§amentos")
     } finally {
       setLoading(false)
     }
@@ -113,17 +113,24 @@ export function TransactionsView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => null)
       if (!res.ok) {
-        toast.error(data.error || "Erro ao salvar")
+        toast.error(data?.error || "Erro ao salvar")
         return
       }
-      toast.success(editing ? "Lançamento atualizado!" : "Lançamento criado!")
+      // Mensagem diferente para compra parcelada
+      if (data?.isInstallmentPurchase) {
+        toast.success(
+          `Compra parcelada criada! ${data.transactionsCreated} lanÃ§amentos gerados (R$ ${data.installmentAmount.toFixed(2)} por mÃªs).`
+        )
+      } else {
+        toast.success(editing ? "LanÃ§amento atualizado!" : "LanÃ§amento criado!")
+      }
       setDialogOpen(false)
       setEditing(null)
       load()
     } catch {
-      toast.error("Erro de conexão")
+      toast.error("Erro de conexÃ£o")
     } finally {
       setSaving(false)
     }
@@ -138,11 +145,11 @@ export function TransactionsView() {
         toast.error(d.error || "Erro ao excluir")
         return
       }
-      toast.success("Lançamento excluído")
+      toast.success("LanÃ§amento excluÃ­do")
       setDeleteId(null)
       load()
     } catch {
-      toast.error("Erro de conexão")
+      toast.error("Erro de conexÃ£o")
     }
   }
 
@@ -154,10 +161,10 @@ export function TransactionsView() {
         toast.error(data.error || "Erro ao duplicar")
         return
       }
-      toast.success("Lançamento duplicado!")
+      toast.success("LanÃ§amento duplicado!")
       load()
     } catch {
-      toast.error("Erro de conexão")
+      toast.error("Erro de conexÃ£o")
     }
   }
 
@@ -175,7 +182,7 @@ export function TransactionsView() {
       toast.success("Marcado como pago")
       load()
     } catch {
-      toast.error("Erro de conexão")
+      toast.error("Erro de conexÃ£o")
     }
   }
 
@@ -186,12 +193,12 @@ export function TransactionsView() {
   return (
     <div className="space-y-4">
       <SectionTitle
-        title="Lançamentos"
+        title="LanÃ§amentos"
         subtitle={`${monthName(month)} de ${year}`}
         action={
           <Button onClick={() => { setEditing(null); setDialogOpen(true) }}>
             <Plus className="h-4 w-4 mr-2" />
-            Novo lançamento
+            Novo lanÃ§amento
           </Button>
         }
       />
@@ -236,7 +243,7 @@ export function TransactionsView() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por descrição..."
+                placeholder="Buscar por descriÃ§Ã£o..."
                 className="pl-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -298,11 +305,11 @@ export function TransactionsView() {
           ) : transactions.length === 0 ? (
             <EmptyState
               icon={Receipt}
-              title="Nenhum lançamento encontrado"
+              title="Nenhum lanÃ§amento encontrado"
               description="Cadastre uma receita ou despesa, ou ajuste os filtros."
               action={
                 <Button onClick={() => { setEditing(null); setDialogOpen(true) }}>
-                  <Plus className="h-4 w-4 mr-2" /> Novo lançamento
+                  <Plus className="h-4 w-4 mr-2" /> Novo lanÃ§amento
                 </Button>
               }
             />
@@ -329,10 +336,10 @@ export function TransactionsView() {
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
                       <span>{formatDateBR(t.transactionDate)}</span>
-                      <span>·</span>
+                      <span>Â·</span>
                       <span style={{ color: t.category?.color }}>{t.category?.name || "Sem categoria"}</span>
-                      <span>·</span>
-                      <span>{t.responsible?.name || "—"}</span>
+                      <span>Â·</span>
+                      <span>{t.responsible?.name || "â"}</span>
                     </div>
                   </div>
 
@@ -361,7 +368,7 @@ export function TransactionsView() {
 
                   <div className="text-right shrink-0 min-w-[100px]">
                     <div className={`text-sm font-semibold ${t.type === "INCOME" ? "text-emerald-600" : "text-foreground"}`}>
-                      {t.type === "INCOME" ? "+" : "−"} {formatBRL(t.amount)}
+                      {t.type === "INCOME" ? "+" : "â"} {formatBRL(t.amount)}
                     </div>
                   </div>
 
@@ -401,7 +408,7 @@ export function TransactionsView() {
         </CardContent>
       </Card>
 
-      {/* Dialog de formulário */}
+      {/* Dialog de formulÃ¡rio */}
       <TransactionForm
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -418,9 +425,9 @@ export function TransactionsView() {
       <AlertDialog open={!!deleteId} onOpenChange={(v) => !v && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir lanÃ§amento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita. O lançamento será permanentemente removido.
+              Esta aÃ§Ã£o nÃ£o pode ser desfeita. O lanÃ§amento serÃ¡ permanentemente removido.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -516,12 +523,12 @@ function TransactionForm({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!description.trim() || !amount) {
-      toast.error("Preencha descrição e valor")
+      toast.error("Preencha descriÃ§Ã£o e valor")
       return
     }
     const amt = parseFloat(amount.replace(",", "."))
     if (isNaN(amt) || amt <= 0) {
-      toast.error("Valor inválido")
+      toast.error("Valor invÃ¡lido")
       return
     }
     onSave({
@@ -549,7 +556,7 @@ function TransactionForm({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editing ? "Editar lançamento" : "Novo lançamento"}</DialogTitle>
+          <DialogTitle>{editing ? "Editar lanÃ§amento" : "Novo lanÃ§amento"}</DialogTitle>
           <DialogDescription>
             {editing ? "Atualize os campos abaixo." : "Registre uma nova receita ou despesa."}
           </DialogDescription>
@@ -586,7 +593,7 @@ function TransactionForm({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="description">Descrição *</Label>
+              <Label htmlFor="description">DescriÃ§Ã£o *</Label>
               <Input
                 id="description"
                 placeholder="Ex: Supermercado mensal"
@@ -611,7 +618,7 @@ function TransactionForm({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="transactionDate">Data da movimentação *</Label>
+              <Label htmlFor="transactionDate">Data da movimentaÃ§Ã£o *</Label>
               <Input
                 id="transactionDate"
                 type="date"
@@ -651,7 +658,7 @@ function TransactionForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Integrante responsável</Label>
+              <Label>Integrante responsÃ¡vel</Label>
               <Select value={responsibleId} onValueChange={setResponsibleId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -675,9 +682,9 @@ function TransactionForm({
                 <SelectContent>
                   <SelectItem value="PIX">Pix</SelectItem>
                   <SelectItem value="CASH">Dinheiro</SelectItem>
-                  <SelectItem value="DEBIT">Débito</SelectItem>
-                  <SelectItem value="CREDIT">Crédito</SelectItem>
-                  <SelectItem value="TRANSFER">Transferência</SelectItem>
+                  <SelectItem value="DEBIT">DÃ©bito</SelectItem>
+                  <SelectItem value="CREDIT">CrÃ©dito</SelectItem>
+                  <SelectItem value="TRANSFER">TransferÃªncia</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -697,7 +704,7 @@ function TransactionForm({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Conta bancária</Label>
+              <Label>Conta bancÃ¡ria</Label>
               <Select value={accountId} onValueChange={setAccountId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -710,7 +717,7 @@ function TransactionForm({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Cartão</Label>
+              <Label>CartÃ£o</Label>
               <Select value={cardId} onValueChange={setCardId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione..." />
@@ -733,13 +740,13 @@ function TransactionForm({
               <Switch id="isFixed" checked={isFixed} onCheckedChange={setIsFixed} />
             </div>
             <div className="space-y-2">
-              <Label>Recorrência</Label>
+              <Label>RecorrÃªncia</Label>
               <Select value={recurrence} onValueChange={setRecurrence}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NONE">Sem recorrência</SelectItem>
+                  <SelectItem value="NONE">Sem recorrÃªncia</SelectItem>
                   <SelectItem value="MONTHLY">Mensal</SelectItem>
                   <SelectItem value="WEEKLY">Semanal</SelectItem>
                   <SelectItem value="YEARLY">Anual</SelectItem>
@@ -750,7 +757,7 @@ function TransactionForm({
 
           {type === "EXPENSE" && (
             <div className="space-y-2">
-              <Label htmlFor="installments">Número de parcelas</Label>
+              <Label htmlFor="installments">NÃºmero de parcelas</Label>
               <Input
                 id="installments"
                 type="number"
@@ -759,13 +766,45 @@ function TransactionForm({
                 onChange={(e) => setInstallments(Math.max(1, parseInt(e.target.value) || 1))}
               />
               <p className="text-xs text-muted-foreground">
-                Use 1 para pagamento à vista. Para parcelamento no cartão, use o módulo de Cartões.
+                Use 1 para pagamento Ã  vista. Para compras parceladas no cartÃ£o de crÃ©dito,
+                selecione <strong>CrÃ©dito</strong> como forma de pagamento, escolha o cartÃ£o e
+                informe o nÃºmero de parcelas â o sistema vai criar automaticamente um lanÃ§amento
+                por mÃªs.
               </p>
+
+              {/* PREVIEW da divisÃ£o quando for compra parcelada no cartÃ£o */}
+              {type === "EXPENSE" &&
+                paymentMethod === "CREDIT" &&
+                cardId &&
+                installments > 1 &&
+                amount &&
+                !isNaN(parseFloat(amount.replace(",", "."))) &&
+                parseFloat(amount.replace(",", ".")) > 0 && (
+                  <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-900">
+                    <div className="font-semibold mb-1 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-blue-600" />
+                      Preview do parcelamento
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <div>
+                        Valor total: <strong>R$ {parseFloat(amount.replace(",", ".")).toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        Parcelas: <strong>{installments}x</strong> de{" "}
+                        <strong>R$ {(parseFloat(amount.replace(",", ".")) / installments).toFixed(2)}</strong>
+                      </div>
+                      <div className="mt-1 text-blue-700">
+                        SerÃ¡ criado 1 lanÃ§amento por mÃªs, comeÃ§ando no mÃªs selecionado.
+                        A compra tambÃ©m aparecerÃ¡ automaticamente na aba <strong>CartÃµes</strong>.
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
+            <Label htmlFor="notes">ObservaÃ§Ãµes</Label>
             <Textarea
               id="notes"
               placeholder="Notas adicionais..."
@@ -780,7 +819,7 @@ function TransactionForm({
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "Salvando..." : editing ? "Salvar alterações" : "Criar lançamento"}
+              {saving ? "Salvando..." : editing ? "Salvar alteraÃ§Ãµes" : "Criar lanÃ§amento"}
             </Button>
           </DialogFooter>
         </form>
