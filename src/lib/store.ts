@@ -12,10 +12,11 @@ export type ViewKey =
   | "reports"
   | "members"
   | "settings"
+  | "admin"
 
 interface AppState {
   // Auth
-  user: { id: string; name: string; email: string; role: string; avatarColor: string } | null
+  user: { id: string; name: string; email: string; role: string; avatarColor: string; isSuperAdmin?: boolean } | null
   family: { id: string; name: string } | null
   authLoading: boolean
   setUser: (user: AppState["user"], family: AppState["family"]) => void
