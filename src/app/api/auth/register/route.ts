@@ -8,6 +8,7 @@ const registerSchema = z.object({
   name: z.string().min(2, "Nome deve ter ao menos 2 caracteres"),
   email: z.string().email("E-mail inválido"),
   password: z.string().min(6, "Senha deve ter ao menos 6 caracteres"),
+  inviteCode: z.string().min(1, "Código de convite obrigatório"),
   persist: z.boolean().optional().default(true),
 })
 
@@ -22,7 +23,30 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { familyName, name, email, password, persist } = parsed.data
+    const { familyName, name, email, password, inviteCode, persist } = parsed.data
+
+    // ===== VALIDA O CÓDIGO DE CONVITE =====
+    const code = await db.inviteCode.findUnique({
+      where: { code: inviteCode.trim().toUpperCase() },
+    })
+    if (!code || !code.active) {
+      return NextResponse.json(
+        { error: "Código de convite inválido ou expirado." },
+        { status: 400 }
+      )
+    }
+    if (code.expiresAt && code.expiresAt < new Date()) {
+      return NextResponse.json(
+        { error: "Código de convite expirado." },
+        { status: 400 }
+      )
+    }
+    if (code.maxUses > 0 && code.uses >= code.maxUses) {
+      return NextResponse.json(
+        { error: "Código de convite já atingiu o limite de usos." },
+        { status: 400 }
+      )
+    }
 
     const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } })
     if (existing) {
@@ -84,6 +108,12 @@ export async function POST(req: NextRequest) {
       ],
     })
 
+    // ===== Incrementa o uso do código de convite =====
+    await db.inviteCode.update({
+      where: { id: code.id },
+      data: { uses: { increment: 1 } },
+    })
+
     const token = await createSession(user.id, persist)
 
     const res = NextResponse.json({
@@ -131,6 +161,7 @@ export async function GET() {
       email: session.user.email,
       role: session.user.role,
       avatarColor: session.user.avatarColor,
+      isSuperAdmin: session.user.isSuperAdmin,
     },
     family: { id: session.user.family.id, name: session.user.family.name },
   })
