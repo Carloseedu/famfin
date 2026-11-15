@@ -6,7 +6,7 @@ import { z } from "zod"
 // GET /api/transactions?month=11&year=2026&type=EXPENSE&status=PAID&categoryId=...&memberId=...&search=...
 export async function GET(req: NextRequest) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  if (!user) return NextResponse.json({ error: "NÃ£o autenticado" }, { status: 401 })
 
   const url = new URL(req.url)
   const month = url.searchParams.get("month")
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
 const createSchema = z.object({
   type: z.enum(["INCOME", "EXPENSE"]),
-  description: z.string().min(1, "Descrição obrigatória"),
+  description: z.string().min(1, "DescriÃ§Ã£o obrigatÃ³ria"),
   amount: z.number().positive("Valor deve ser positivo"),
   transactionDate: z.string(),
   dueDate: z.string().optional().nullable(),
@@ -76,19 +76,113 @@ const createSchema = z.object({
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser()
-  if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  if (!user) return NextResponse.json({ error: "NÃ£o autenticado" }, { status: 401 })
 
   try {
     const body = await req.json()
     const parsed = createSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
-        { error: parsed.error.issues[0]?.message || "Dados inválidos" },
+        { error: parsed.error.issues[0]?.message || "Dados invÃ¡lidos" },
         { status: 400 }
       )
     }
     const data = parsed.data
 
+    // ===== DETECTA COMPRA PARCELADA NO CARTÃO =====
+    // CondiÃ§Ã£o: despesa + pagamento no crÃ©dito + cartÃ£o selecionado + mais de 1 parcela
+    const isInstallmentPurchase =
+      data.type === "EXPENSE" &&
+      data.cardId &&
+      data.paymentMethod === "CREDIT" &&
+      data.installments > 1
+
+    if (isInstallmentPurchase) {
+      // Busca o cartÃ£o para pegar o dia de vencimento
+      const card = await db.card.findFirst({
+        where: { id: data.cardId, familyId: user.family.id },
+      })
+      if (!card) {
+        return NextResponse.json({ error: "CartÃ£o nÃ£o encontrado" }, { status: 404 })
+      }
+
+      const installmentAmount = data.amount / data.installments
+      const purchaseDate = new Date(data.transactionDate)
+
+      // 1. Cria o registro da compra parcelada (aparece na aba CartÃµes)
+      const purchase = await db.cardPurchase.create({
+        data: {
+          description: data.description,
+          totalAmount: data.amount,
+          purchaseDate: purchaseDate,
+          installments: data.installments,
+          installmentAmount,
+          categoryId: data.categoryId || null,
+          cardId: card.id,
+          familyId: user.family.id,
+        },
+      })
+
+      // 2. Cria um lanÃ§amento por parcela, cada uma no mÃªs correspondente
+      // Parcela 1: mÃªs da compra (no dia de vencimento do cartÃ£o)
+      // Parcela 2: mÃªs seguinte
+      // Parcela N: mÃªs + (N-1)
+      const createdTransactions = []
+      for (let i = 0; i < data.installments; i++) {
+        const installmentDate = new Date(
+          purchaseDate.getFullYear(),
+          purchaseDate.getMonth() + i,
+          Math.min(card.dueDay, 28) // clamp para evitar overflow de dia 31
+        )
+
+        const tx = await db.transaction.create({
+          data: {
+            type: "EXPENSE",
+            description: `${data.description} ${i + 1}/${data.installments}`,
+            amount: installmentAmount,
+            transactionDate: installmentDate,
+            dueDate: installmentDate,
+            paidDate: null,
+            paymentMethod: "CREDIT",
+            status: "PENDING",
+            isFixed: false,
+            isVariable: true,
+            installments: data.installments,
+            notes: `Compra parcelada - parcela ${i + 1} de ${data.installments}`,
+            categoryId: data.categoryId || null,
+            responsibleId: data.responsibleId || null,
+            accountId: null,
+            cardId: card.id,
+            cardPurchaseId: purchase.id,
+            createdById: user.id,
+            familyId: user.family.id,
+          },
+        })
+        createdTransactions.push(tx)
+      }
+
+      // Log de auditoria
+      await db.auditLog.create({
+        data: {
+          action: "CREATE",
+          entity: "CardPurchase",
+          entityId: purchase.id,
+          summary: `Compra parcelada: ${data.description} - ${data.installments}x de R$ ${installmentAmount.toFixed(2)}`,
+          familyId: user.family.id,
+          userId: user.id,
+        },
+      })
+
+      // Retorna a primeira parcela + contador
+      return NextResponse.json({
+        transaction: createdTransactions[0],
+        transactionsCreated: createdTransactions.length,
+        isInstallmentPurchase: true,
+        installmentAmount,
+      })
+    }
+
+    // ===== FLUXO NORMAL: Ãºnica transaÃ§Ã£o =====
     const transaction = await db.transaction.create({
       data: {
         type: data.type,
@@ -134,6 +228,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ transaction })
   } catch (err: any) {
     console.error("Create transaction error:", err)
-    return NextResponse.json({ error: "Erro ao criar lançamento" }, { status: 500 })
+    return NextResponse.json({ error: "Erro ao criar lanÃ§amento" }, { status: 500 })
   }
 }
