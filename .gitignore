@@ -1,0 +1,49 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# Build do Next.js
+.next/
+out/
+build/
+dist/
+
+# Banco de dados local (NUNCA subir para o GitHub)
+db/*.db
+db/*.db-journal
+db/*.sqlite
+
+# Logs
+*.log
+dev.log
+server.log
+npm-debug.log*
+
+# Variáveis de ambiente (NUNCA subir — tem senhas!)
+.env
+.env.local
+.env.*.local
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Cache
+.cache/
+.eslintcache
+.turbo
+
+# Testes
+coverage/
+
+# Pastas auxiliares do ambiente de desenvolvimento
+.zscripts/
+agent-ctx/
