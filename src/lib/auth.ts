@@ -75,6 +75,36 @@ export async function getSessionUser() {
   return session.user
 }
 
+// Retorna o usuário + flag isSuperAdmin (para o painel admin)
+export async function getSessionUserWithAdmin() {
+  const cookieStore = await cookies()
+  const token = cookieStore.get("fin_session")?.value
+  if (!token) return null
+
+  const session = await db.session.findUnique({
+    where: { token },
+    include: { user: { include: { family: true } } },
+  })
+
+  if (!session) return null
+  if (session.expiresAt < new Date()) {
+    await db.session.delete({ where: { id: session.id } })
+    return null
+  }
+
+  return {
+    ...session.user,
+    family: session.user.family,
+  }
+}
+
+export async function requireSuperAdmin() {
+  const user = await getSessionUser()
+  if (!user) throw new Error("UNAUTHORIZED")
+  if (!user.isSuperAdmin) throw new Error("FORBIDDEN")
+  return user
+}
+
 export async function requireUser() {
   const user = await getSessionUser()
   if (!user) throw new Error("UNAUTHORIZED")
