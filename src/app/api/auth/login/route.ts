@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         role: user.role,
         avatarColor: user.avatarColor,
+        isSuperAdmin: user.isSuperAdmin,
       },
       family: { id: user.family.id, name: user.family.name },
     })
