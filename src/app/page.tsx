@@ -17,6 +17,7 @@ import { SettingsView } from "@/components/settings/SettingsView"
 import { AdminView } from "@/components/admin/AdminView"
 import { LoadingState } from "@/components/common/States"
 import { InstallAppBanner } from "@/components/common/InstallAppBanner"
+import { Footer } from "@/components/common/Footer"
 import { Wallet } from "lucide-react"
 
 export default function Home() {
@@ -79,6 +80,7 @@ export default function Home() {
           {view === "settings" && <SettingsView />}
           {view === "admin" && user?.isSuperAdmin && <AdminView />}
         </main>
+        <Footer />
       </div>
     </div>
   )
