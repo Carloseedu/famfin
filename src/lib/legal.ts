@@ -251,12 +251,7 @@ Implementamos proteções contra:
 
 MONITORAMENTO
 
-A infraestrutura é monitorada 24/7 pela Vercel e Supabase. Em caso de:
-- Tentativa de invasão
-- Comportamento anômalo
-- Falha de serviço
-
-Os sistemas detectam automaticamente e nossa equipe é notificada.
+A infraestrutura é monitorada 24/7 pela Vercel e Supabase. Em caso de tentativa de invasão, comportamento anômalo ou falha de serviço, os sistemas detectam automaticamente e nossa equipe é notificada.
 
 DICA PARA O USUÁRIO
 
@@ -265,11 +260,9 @@ Para aumentar sua segurança:
 - Não compartilhe sua senha com ninguém
 - Faça logout em computadores públicos
 - Mantenha seu navegador atualizado
-- Ative a verificação em duas etapas no seu e-mail
 
 RELATAR VULNERABILIDADE
 
 Encontrou um problema de segurança? Reporte imediatamente para: seguranca@famfin.com.br
 
 Levamos todos os relatórios a sério e responderemos em até 48 horas.
-`
