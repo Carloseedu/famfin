@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { Wallet, Mail, Lock, User, Users, ArrowRight, ShieldCheck, TrendingUp, PieChart, Ticket } from "lucide-react"
+import { Wallet, Mail, Lock, User, Users, ArrowRight, ShieldCheck, TrendingUp, PieChart, Ticket, FileText } from "lucide-react"
 import { toast } from "sonner"
 import { useAppStore } from "@/lib/store"
+import { Footer } from "@/components/common/Footer"
+import { CookieBanner } from "@/components/common/CookieBanner"
 
 export function AuthScreen() {
   const [tab, setTab] = useState<"login" | "register">("login")
@@ -29,6 +31,7 @@ export function AuthScreen() {
   const [regPassword, setRegPassword] = useState("")
   const [regInviteCode, setRegInviteCode] = useState("")
   const [regPersist, setRegPersist] = useState(true)
+  const [regAcceptedTerms, setRegAcceptedTerms] = useState(false)
 
   const [recoverEmail, setRecoverEmail] = useState("")
 
@@ -58,6 +61,10 @@ export function AuthScreen() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
+    if (!regAcceptedTerms) {
+      toast.error("Você precisa aceitar os Termos de Uso e a Política de Privacidade para se cadastrar.")
+      return
+    }
     setLoading(true)
     try {
       const res = await fetch("/api/auth/register", {
@@ -295,7 +302,25 @@ export function AuthScreen() {
                         <Switch checked={regPersist} onCheckedChange={setRegPersist} />
                         Manter sessão por 30 dias
                       </label>
-                      <Button type="submit" className="w-full" disabled={loading}>
+
+                      {/* Checkbox de aceitação dos Termos (LGPD) */}
+                      <label className="flex items-start gap-2 text-xs text-muted-foreground cursor-pointer rounded-md bg-muted/30 p-2">
+                        <input
+                          type="checkbox"
+                          checked={regAcceptedTerms}
+                          onChange={(e) => setRegAcceptedTerms(e.target.checked)}
+                          className="mt-0.5 h-4 w-4 rounded border-input"
+                          required
+                        />
+                        <span>
+                          Li e aceito os{" "}
+                          <strong>Termos de Uso</strong> e a{" "}
+                          <strong>Política de Privacidade</strong> do FamFin,
+                          conforme a LGPD (Lei nº 13.709/2018).
+                        </span>
+                      </label>
+
+                      <Button type="submit" className="w-full" disabled={loading || !regAcceptedTerms}>
                         {loading ? "Criando..." : "Criar conta"}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
@@ -307,6 +332,12 @@ export function AuthScreen() {
           )}
         </div>
       </div>
+
+      {/* Rodapé com links legais (LGPD) */}
+      <Footer />
+
+      {/* Banner de cookies (LGPD) */}
+      <CookieBanner />
     </div>
   )
 }
