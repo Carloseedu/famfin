@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useAppStore } from "@/lib/store"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,9 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, Trash2, Tag, Wallet, CreditCard, Settings as SettingsIcon, Building2 } from "lucide-react"
+import { Plus, Pencil, Trash2, Tag, Wallet, CreditCard, Settings as SettingsIcon, Building2, Shield, Download } from "lucide-react"
 import { EmptyState, LoadingState, SectionTitle } from "@/components/common/States"
 import { toast } from "sonner"
+import { useAppStore } from "@/lib/store"
 
 interface Category { id: string; name: string; type: string; color: string; icon?: string | null; isDefault: boolean }
 interface Account { id: string; name: string; institution: string | null; type: string; initialBalance: number }
@@ -30,6 +30,42 @@ export function SettingsView() {
   const [deleteCatId, setDeleteCatId] = useState<string | null>(null)
   const [deleteAccId, setDeleteAccId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // LGPD: estados para exportar e excluir dados
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("")
+  const [deleting, setDeleting] = useState(false)
+
+  // Exportar todos os dados do usuário em JSON
+  function handleExportData() {
+    window.open("/api/account/export", "_blank")
+    toast.success("Exportação iniciada. O arquivo JSON será baixado.")
+  }
+
+  // Excluir conta + todos os dados (LGPD art. 18, VI)
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmEmail: deleteConfirmEmail }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(data?.error || "Erro ao excluir conta")
+        return
+      }
+      toast.success(data.message || "Conta excluída com sucesso.")
+      setDeleteDialogOpen(false)
+      // Redireciona para a tela de login após 2 segundos
+      setTimeout(() => window.location.reload(), 2000)
+    } catch {
+      toast.error("Erro de conexão")
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -302,6 +338,93 @@ export function SettingsView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Card LGPD: Exportar e Excluir dados */}
+      <Card className="border-l-4 border-l-blue-500">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4 text-blue-600" />
+            Seus dados (LGPD)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg bg-muted/30 p-3 text-sm">
+            <div className="font-medium mb-1">Exportar meus dados</div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Baixe TODOS os seus dados (família, lançamentos, cartões, metas, etc.)
+              em formato JSON. Conforme LGPD art. 18, V (portabilidade).
+            </p>
+            <Button onClick={handleExportData} variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Baixar meus dados
+            </Button>
+          </div>
+
+          <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm">
+            <div className="font-medium mb-1 text-red-900">Excluir minha conta</div>
+            <p className="text-xs text-red-700 mb-3">
+              Exclui permanentemente sua conta e TODOS os dados da sua família.
+              Esta ação é irreversível. Se você for o admin e houver outros integrantes,
+              apenas sua conta será excluída (a família continua para os demais).
+              Conforme LGPD art. 18, VI (direito ao esquecimento).
+            </p>
+            <Button onClick={() => setDeleteDialogOpen(true)} variant="destructive" size="sm">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Excluir conta
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Dialog de confirmação de exclusão */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-900">⚠️ Excluir minha conta</DialogTitle>
+            <DialogDescription>
+              Esta ação é irreversível. Todos os dados da sua família serão permanentemente apagados.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-md bg-red-50 border border-red-200 p-3 text-xs text-red-900">
+              <div className="font-medium mb-1">O que será apagado:</div>
+              <ul className="list-disc list-inside space-y-0.5">
+                <li>Todas as receitas e despesas cadastradas</li>
+                <li>Todos os cartões e compras parceladas</li>
+                <li>Todas as contas bancárias</li>
+                <li>Todas as metas e orçamentos</li>
+                <li>Todas as categorias personalizadas</li>
+                <li>Todos os integrantes da família</li>
+                <li>Histórico de auditoria</li>
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deleteEmail">
+                Digite seu e-mail para confirmar: <span className="text-red-600">*</span>
+              </Label>
+              <Input
+                id="deleteEmail"
+                type="email"
+                placeholder={user?.email || ""}
+                value={deleteConfirmEmail}
+                onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleting || !deleteConfirmEmail}
+            >
+              {deleting ? "Excluindo..." : "Sim, excluir tudo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <CategoryForm
         open={catDialogOpen}
