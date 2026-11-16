@@ -16,6 +16,7 @@ import { MembersView } from "@/components/members/MembersView"
 import { SettingsView } from "@/components/settings/SettingsView"
 import { AdminView } from "@/components/admin/AdminView"
 import { LoadingState } from "@/components/common/States"
+import { InstallAppBanner } from "@/components/common/InstallAppBanner"
 import { Wallet } from "lucide-react"
 
 export default function Home() {
@@ -53,7 +54,12 @@ export default function Home() {
   }
 
   if (!user || !family) {
-    return <AuthScreen />
+    return (
+      <>
+        <AuthScreen />
+        <InstallAppBanner />
+      </>
+    )
   }
 
   return (
