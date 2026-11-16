@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#0f1e3d"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <g transform="translate(96, 96)">
+    <rect x="32" y="80" width="256" height="192" rx="24" fill="white"/>
+    <rect x="32" y="80" width="256" height="48" rx="24" fill="#10b981"/>
+    <circle cx="240" cy="180" r="24" fill="#1e3a8a"/>
+    <rect x="64" y="160" width="160" height="16" rx="8" fill="#1e3a8a" opacity="0.15"/>
+    <rect x="64" y="192" width="120" height="12" rx="6" fill="#1e3a8a" opacity="0.1"/>
+    <rect x="64" y="216" width="180" height="12" rx="6" fill="#1e3a8a" opacity="0.1"/>
+  </g>
+  <text x="256" y="450" font-family="Inter, Arial, sans-serif" font-size="48" font-weight="700" fill="white" text-anchor="middle" opacity="0.9">FamFin</text>
+</svg>
