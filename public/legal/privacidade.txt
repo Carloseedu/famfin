@@ -1,0 +1,97 @@
+POLÍTICA DE PRIVACIDADE
+
+A sua privacidade é fundamental para nós. Esta Política de Privacidade descreve como o FamFin coleta, usa, armazena e protege os dados pessoais dos usuários da plataforma, em conformidade com a Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018).
+
+1. DADOS COLETADOS
+
+Coletamos os seguintes dados pessoais:
+
+Dados de cadastro:
+- Nome
+- E-mail
+- Senha (armazenada com criptografia PBKDF2-SHA512, nunca em texto puro)
+
+Dados financeiros (inseridos pelo usuário):
+- Descrição de receitas e despesas
+- Valores
+- Datas de transações
+- Categorias
+- Contas bancárias (nome e instituição)
+- Cartões de crédito (nome, instituição, limite)
+
+Dados de uso:
+- Endereço IP (para segurança)
+- Data e hora de acessos
+- Tipo de navegador e dispositivo
+
+2. FINALIDADE DO TRATAMENTO
+
+Os dados são utilizados para:
+- Prestação do serviço de gestão financeira familiar
+- Autenticação e controle de acesso
+- Geração de relatórios e estatísticas
+- Suporte ao usuário
+- Cumprimento de obrigações legais
+
+3. COMPARTILHAMENTO DE DADOS
+
+NÃO compartilhamos seus dados com terceiros para fins comerciais. Os dados são processados apenas pelos seguintes prestadores de serviços, sob contratos de confidencialidade:
+
+- Vercel (hospedagem da aplicação) - Estados Unidos
+- Supabase (banco de dados PostgreSQL) - São Paulo, Brasil
+
+Nenhum outro terceiro tem acesso aos seus dados.
+
+4. TRANSFERÊNCIA INTERNACIONAL
+
+Os dados podem ser processados nos Estados Unidos (pela Vercel) e no Brasil (pela Supabase). A transferência internacional ocorre apenas para a execução do serviço contratado, em conformidade com o art. 33 da LGPD.
+
+5. TEMPO DE ARMAZENAMENTO
+
+Seus dados são mantidos enquanto sua conta estiver ativa. Após solicitação de exclusão, todos os dados são permanentemente apagados em até 30 dias.
+
+6. DIREITOS DO TITULAR (LGPD)
+
+Você tem direito a:
+- Confirmar a existência de tratamento de seus dados
+- Acessar seus dados
+- Corrigir dados incompletos, inexatos ou desatualizados
+- Anonimizar, bloquear ou eliminar dados desnecessários
+- Portabilidade dos dados (exportar em formato estruturado)
+- Eliminação dos dados pessoais tratados (direito ao esquecimento)
+- Informação sobre compartilhamento
+- Revogação do consentimento
+
+Para exercer seus direitos, use os botões "Exportar meus dados" e "Excluir minha conta" disponíveis em Configurações, ou contate: privacidade@famfin.com.br
+
+7. MEDIDAS DE SEGURANÇA
+
+Adotamos as seguintes medidas técnicas:
+- Senhas criptografadas com PBKDF2-SHA512 (100.000 iterações)
+- Sessões em cookies httpOnly (não acessíveis por JavaScript)
+- Conexão HTTPS com certificado SSL
+- Isolamento de dados por família (uma família nunca acessa dados de outra)
+- Auditoria de operações importantes
+- Validação de entrada em todas as APIs
+
+8. COOKIES
+
+Utilizamos apenas cookies essenciais para o funcionamento:
+- fin_session: mantém sua sessão logada (não rastreia você)
+- localStorage: preferências do usuário (período selecionado, etc.)
+
+NÃO utilizamos cookies de rastreamento, publicidade ou analytics de terceiros.
+
+9. ALTERAÇÕES DESTA POLÍTICA
+
+Esta política pode ser atualizada a qualquer momento. Recomendamos consulta periódica. Alterações significativas serão comunicadas por e-mail.
+
+10. CONTATO DO ENCARREGADO (DPO)
+
+Em caso de dúvidas sobre privacidade, contate:
+E-mail: privacidade@famfin.com.br
+Responsável: [Nome do responsável pela LGPD no FamFin]
+
+11. LEI APLICÁVEL
+
+Esta política é regida pela legislação brasileira, especialmente a LGPD (Lei nº 13.709/2018).
