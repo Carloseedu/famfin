@@ -21,7 +21,10 @@ const updateSchema = z.object({
   installments: z.number().int().min(1).optional(),
   notes: z.string().optional().nullable(),
   paidDate: z.string().optional().nullable(),
-  applyToFuture: z.boolean().optional(), // ← novo: atualiza todos os próximos do mesmo grupo
+  applyToFuture: z.boolean().optional(),
+  // Mês de competência (opcional)
+  competenciaMes: z.number().int().min(1).max(12).optional().nullable(),
+  competenciaAno: z.number().int().min(2000).optional().nullable(),
 })
 
 export async function PATCH(
@@ -86,6 +89,14 @@ export async function PATCH(
     if (data.recurrence !== undefined) updateData.recurrence = data.recurrence || null
     if (data.installments !== undefined) updateData.installments = data.installments
     if (data.notes !== undefined) updateData.notes = data.notes || null
+
+    // Mês de competência (opcional): se veio mes+ano, atualiza; se veio null, limpa
+    if (data.competenciaMes !== undefined && data.competenciaAno !== undefined) {
+      updateData.competenciaDate =
+        data.competenciaMes && data.competenciaAno
+          ? new Date(data.competenciaAno, data.competenciaMes - 1, 1)
+          : null
+    }
 
     const updated = await db.transaction.update({
       where: { id },
