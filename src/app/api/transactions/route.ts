@@ -36,7 +36,11 @@ export async function GET(req: NextRequest) {
     const y = parseInt(year, 10)
     const start = new Date(y, m - 1, 1)
     const end = new Date(y, m, 1)
-    where.transactionDate = { gte: start, lt: end }
+    // Filtra por competenciaDate (se preenchido) OU transactionDate (se competenciaDate é null)
+    where.OR = [
+      { competenciaDate: { gte: start, lt: end } },
+      { competenciaDate: null, transactionDate: { gte: start, lt: end } },
+    ]
   }
 
   const transactions = await db.transaction.findMany({
@@ -72,6 +76,9 @@ const createSchema = z.object({
   installments: z.number().int().min(1).default(1),
   notes: z.string().optional().nullable(),
   paidDate: z.string().optional().nullable(),
+  // Mês de competência (opcional): { mes: 1-12, ano: 2026 } ou null
+  competenciaMes: z.number().int().min(1).max(12).optional().nullable(),
+  competenciaAno: z.number().int().min(2000).optional().nullable(),
 })
 
 export async function POST(req: NextRequest) {
@@ -253,6 +260,12 @@ export async function POST(req: NextRequest) {
     }
 
     // ===== FLUXO NORMAL: única transação =====
+    // Calcula competenciaDate se o usuário informou mês/ano de competência
+    const competenciaDate =
+      data.competenciaMes && data.competenciaAno
+        ? new Date(data.competenciaAno, data.competenciaMes - 1, 1)
+        : null
+
     const transaction = await db.transaction.create({
       data: {
         type: data.type,
@@ -272,6 +285,7 @@ export async function POST(req: NextRequest) {
         responsibleId: data.responsibleId || null,
         accountId: data.accountId || null,
         cardId: data.cardId || null,
+        competenciaDate,
         createdById: user.id,
         familyId: user.family.id,
       },
