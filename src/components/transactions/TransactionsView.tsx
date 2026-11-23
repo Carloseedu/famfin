@@ -489,6 +489,11 @@ function TransactionForm({
   const [installments, setInstallments] = useState(1)
   const [notes, setNotes] = useState("")
 
+  // Mês de competência (opcional): quando a transação deve ser contabilizada
+  // Default: "" = usar o mês da data de movimentação
+  // Formato: "YYYY-MM" (ex: "2026-12" para dezembro de 2026)
+  const [competencia, setCompetencia] = useState("")
+
   useEffect(() => {
     if (editing) {
       setType(editing.type as any)
@@ -507,6 +512,16 @@ function TransactionForm({
       setRecurrence(editing.recurrence || "NONE")
       setInstallments(editing.installments)
       setNotes(editing.notes || "")
+      // Carrega competenciaDate da transação editada (se tiver)
+      const txCompetencia = (editing as any).competenciaDate
+      if (txCompetencia) {
+        const d = new Date(txCompetencia)
+        const mes = String(d.getMonth() + 1).padStart(2, "0")
+        const ano = d.getFullYear()
+        setCompetencia(`${ano}-${mes}`)
+      } else {
+        setCompetencia("")
+      }
     } else {
       setType("EXPENSE")
       setDescription("")
@@ -524,6 +539,7 @@ function TransactionForm({
       setRecurrence("NONE")
       setInstallments(1)
       setNotes("")
+      setCompetencia("")
     }
   }, [editing, defaultDate, open])
 
@@ -556,6 +572,13 @@ function TransactionForm({
       installments,
       notes: notes || null,
       paidDate: status === "PAID" ? new Date().toISOString() : null,
+      // Envia competência se preenchido (formato "YYYY-MM")
+      ...(competencia
+        ? {
+            competenciaMes: parseInt(competencia.split("-")[1], 10),
+            competenciaAno: parseInt(competencia.split("-")[0], 10),
+          }
+        : { competenciaMes: null, competenciaAno: null }),
       ...(editing && isFixed && applyToFuture ? { applyToFuture: true } : {}),
     })
   }
@@ -644,6 +667,27 @@ function TransactionForm({
                 onChange={(e) => setDueDate(e.target.value)}
               />
             </div>
+          </div>
+
+          {/* Mês de competência (opcional) - para compras no cartão que serão pagas no mês seguinte */}
+          <div className="space-y-2">
+            <Label htmlFor="competencia">Mês de competência (opcional)</Label>
+            <Input
+              id="competencia"
+              type="month"
+              value={competencia}
+              onChange={(e) => setCompetencia(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Em qual mês esta transação deve ser contabilizada? Deixe em branco para usar o mês da data de movimentação.
+              <strong> Use para compras no cartão após o fechamento</strong> (serão pagas no mês seguinte).
+            </p>
+            {competencia && transactionDate && competencia.slice(0, 7) !== transactionDate.slice(0, 7) && (
+              <div className="rounded-md bg-blue-50 border border-blue-200 p-2 text-xs text-blue-900">
+                ✓ Esta transação será contabilizada em <strong>{new Date(competencia + "-01").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</strong>,
+                não no mês da movimentação.
+              </div>
+            )}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
