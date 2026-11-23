@@ -140,6 +140,11 @@ model Transaction {
   recurrenceGroupId String? // agrupa parcelas geradas de uma recorrente
   cardPurchaseId  String?
 
+  // Mês de competência: quando a transação deve ser contabilizada
+  // (independente da data em que foi feita). Útil para compras no cartão
+  // que serão pagas no mês seguinte. Se null, usa transactionDate.
+  competenciaDate DateTime?
+
   familyId        String
   family          Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
