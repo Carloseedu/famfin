@@ -19,7 +19,10 @@ export async function GET(req: NextRequest) {
   const transactions = await db.transaction.findMany({
     where: {
       familyId: user.family.id,
-      transactionDate: { gte: start, lt: end },
+      OR: [
+        { competenciaDate: { gte: start, lt: end } },
+        { competenciaDate: null, transactionDate: { gte: start, lt: end } },
+      ],
     },
     include: {
       category: true,
@@ -120,7 +123,10 @@ export async function GET(req: NextRequest) {
     const monthTx = await db.transaction.findMany({
       where: {
         familyId: user.family.id,
-        transactionDate: { gte: evStart, lt: evEnd },
+        OR: [
+          { competenciaDate: { gte: evStart, lt: evEnd } },
+          { competenciaDate: null, transactionDate: { gte: evStart, lt: evEnd } },
+        ],
       },
       select: { type: true, amount: true, isFixed: true },
     })
@@ -145,7 +151,10 @@ export async function GET(req: NextRequest) {
   const prevTx = await db.transaction.findMany({
     where: {
       familyId: user.family.id,
-      transactionDate: { gte: prevStart, lt: prevEnd },
+      OR: [
+        { competenciaDate: { gte: prevStart, lt: prevEnd } },
+        { competenciaDate: null, transactionDate: { gte: prevStart, lt: prevEnd } },
+      ],
     },
     select: { type: true, amount: true },
   })
