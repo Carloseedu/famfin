@@ -156,6 +156,14 @@ export async function POST(req: NextRequest) {
           Math.min(card.dueDay, 28) // clamp para evitar overflow de dia 31
         )
 
+        // PRIMEIRA parcela (i=0): respeita o status escolhido pelo usuário (Pago/Pendente)
+        // DEMAIS parcelas (i>0): sempre Pendente (não foram pagas ainda)
+        const isFirstInstallment = i === 0
+        const installmentStatus = isFirstInstallment ? data.status : "PENDING"
+        const installmentPaidDate = isFirstInstallment && data.status === "PAID"
+          ? (data.paidDate ? new Date(data.paidDate) : new Date())
+          : null
+
         const tx = await db.transaction.create({
           data: {
             type: "EXPENSE",
@@ -167,9 +175,9 @@ export async function POST(req: NextRequest) {
             // que cada parcela seja contabilizada no mês correto, mesmo se o
             // usuário mudar a transactionDate depois via edição
             competenciaDate: installmentDate,
-            paidDate: null,
+            paidDate: installmentPaidDate,
             paymentMethod: "CREDIT",
-            status: "PENDING",
+            status: installmentStatus,
             isFixed: false,
             isVariable: true,
             installments: data.installments,
