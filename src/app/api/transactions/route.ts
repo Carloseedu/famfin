@@ -147,10 +147,15 @@ export async function POST(req: NextRequest) {
       }
 
       const createdTransactions = []
+      // Data da movimentação que o usuário digitou — será a mesma para TODAS as parcelas
+      // Isso permite ao usuário identificar a compra na lista de lançamentos pela data real
+      const movimentacaoDate = new Date(data.transactionDate)
+
       for (let i = 0; i < data.installments; i++) {
+        // Data de VENCIMENTO da parcela: dia de vencimento do cartão no mês correspondente
         // JavaScript trata automaticamente o "rollover" de ano:
         // new Date(2026, 11 + 1, 15) = 15 de janeiro de 2027 ✓
-        const installmentDate = new Date(
+        const installmentDueDate = new Date(
           baseYear,
           baseMonth + i,
           Math.min(card.dueDay, 28) // clamp para evitar overflow de dia 31
@@ -169,12 +174,13 @@ export async function POST(req: NextRequest) {
             type: "EXPENSE",
             description: `${data.description} ${i + 1}/${data.installments}`,
             amount: installmentAmount,
-            transactionDate: installmentDate,
-            dueDate: installmentDate,
-            // Define competenciaDate igual à installmentDate para garantir
-            // que cada parcela seja contabilizada no mês correto, mesmo se o
-            // usuário mudar a transactionDate depois via edição
-            competenciaDate: installmentDate,
+            // transactionDate = data que o usuário digitou (mesma para todas as parcelas)
+            // Isso permite identificar a compra na lista pela data real da movimentação
+            transactionDate: movimentacaoDate,
+            // dueDate = data de vencimento da parcela (dia do cartão no mês correspondente)
+            dueDate: installmentDueDate,
+            // competenciaDate = mesma do vencimento, para o dashboard contar no mês correto
+            competenciaDate: installmentDueDate,
             paidDate: installmentPaidDate,
             paymentMethod: "CREDIT",
             status: installmentStatus,
