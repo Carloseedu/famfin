@@ -16,29 +16,37 @@ export function formatBRLCompact(value: number): string {
 }
 
 // Formatação de datas no padrão brasileiro
-export function formatDateBR(date: Date | string): string {
+// IMPORTANTE: usa métodos UTC para evitar bug de fuso horário (ex: 26/11 vira 25/11)
+// Isso acontece porque new Date("2026-11-26") é interpretado como meia-noite UTC,
+// e no Brasil (UTC-3) isso equivale a 21h do dia anterior.
+
+// Helper interno: extrai ano/mês/dia de uma string ISO ou Date, usando UTC
+function parseDateUTC(date: Date | string): { year: number; month: number; day: number; hours: number; minutes: number } {
   const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  })
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth() + 1, // getUTCMonth retorna 0-11
+    day: d.getUTCDate(),
+    hours: d.getUTCHours(),
+    minutes: d.getUTCMinutes(),
+  }
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0")
+
+export function formatDateBR(date: Date | string): string {
+  const { day, month, year } = parseDateUTC(date)
+  return `${pad2(day)}/${pad2(month)}/${year}`
 }
 
 export function formatDateShort(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })
+  const { day, month } = parseDateUTC(date)
+  return `${pad2(day)}/${pad2(month)}`
 }
 
 export function formatDateTimeBR(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  const { day, month, year, hours, minutes } = parseDateUTC(date)
+  return `${pad2(day)}/${pad2(month)}/${year} ${pad2(hours)}:${pad2(minutes)}`
 }
 
 export function monthName(month: number): string {
