@@ -20,7 +20,7 @@ import { toast } from "sonner"
 interface Category { id: string; name: string; type: string; color: string; icon?: string | null }
 interface Member { id: string; name: string; avatarColor: string }
 interface Account { id: string; name: string }
-interface Card_ { id: string; name: string }
+interface Card_ { id: string; name: string; dueDay?: number }
 interface Transaction {
   id: string
   type: string
@@ -896,9 +896,49 @@ function TransactionForm({
                         Parcelas: <strong>{installments}x</strong> de{" "}
                         <strong>R$ {(parseFloat(amount.replace(",", ".")) / installments).toFixed(2)}</strong>
                       </div>
-                      <div className="mt-1 text-blue-700">
-                        Será criado 1 lançamento por mês, começando no mês selecionado.
-                        A compra também aparecerá automaticamente na aba <strong>Cartões</strong>.
+
+                      {/* Lista as datas de cada parcela */}
+                      {(() => {
+                        const card = cards.find((c) => c.id === cardId)
+                        const dueDay = card?.dueDay || 10
+                        // Determina mês base (competência se preenchida, senão transactionDate)
+                        let baseYear = parseInt(transactionDate.split("-")[0], 10)
+                        let baseMonth = parseInt(transactionDate.split("-")[1], 10) - 1
+                        if (competencia) {
+                          baseYear = parseInt(competencia.split("-")[0], 10)
+                          baseMonth = parseInt(competencia.split("-")[1], 10) - 1
+                        }
+                        const parcelas = []
+                        for (let i = 0; i < installments && i < 6; i++) {
+                          const d = new Date(baseYear, baseMonth + i, Math.min(dueDay, 28))
+                          const formatDate = (dt: Date) => {
+                            const dd = String(dt.getDate()).padStart(2, "0")
+                            const mm = String(dt.getMonth() + 1).padStart(2, "0")
+                            return `${dd}/${mm}/${dt.getFullYear()}`
+                          }
+                          parcelas.push(
+                            <div key={i}>
+                              Parcela {i + 1}/{installments}:{" "}
+                              <strong>{formatDate(d)}</strong>{" "}
+                              {i === 0 && status === "PAID" && (
+                                <span className="text-emerald-700">(Pago ✓)</span>
+                              )}
+                              {i === 0 && status !== "PAID" && (
+                                <span className="text-amber-700">(Pendente)</span>
+                              )}
+                              {i > 0 && <span className="text-amber-700">(Pendente)</span>}
+                            </div>
+                          )
+                        }
+                        if (installments > 6) {
+                          parcelas.push(<div key="more">... e mais {installments - 6} parcela(s)</div>)
+                        }
+                        return <div className="mt-2 pt-2 border-t border-blue-200">{parcelas}</div>
+                      })()}
+
+                      <div className="mt-2 text-blue-700">
+                        💡 As datas são baseadas no <strong>dia de vencimento do cartão</strong> ({cards.find((c) => c.id === cardId)?.dueDay || "?"}).
+                        A compra também aparecerá na aba <strong>Cartões</strong>.
                       </div>
                     </div>
                   </div>
