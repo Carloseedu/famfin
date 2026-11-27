@@ -136,14 +136,23 @@ export async function POST(req: NextRequest) {
       })
 
       // 2. Cria um lançamento por parcela, cada uma no mês correspondente
-      // Parcela 1: mês da compra (no dia de vencimento do cartão)
-      // Parcela 2: mês seguinte
-      // Parcela N: mês + (N-1)
+      // Se o usuário preencheu mês de competência, usa ELE como base para a distribuição
+      // (ex: compra em 13/11 com competência dezembro → parcela 1 em dez, parcela 2 em jan)
+      // Caso contrário, usa o mês da compra como base (comportamento padrão)
+      let baseYear = purchaseDate.getFullYear()
+      let baseMonth = purchaseDate.getMonth()
+      if (data.competenciaMes && data.competenciaAno) {
+        baseYear = data.competenciaAno
+        baseMonth = data.competenciaMes - 1 // JS months são 0-indexed
+      }
+
       const createdTransactions = []
       for (let i = 0; i < data.installments; i++) {
+        // JavaScript trata automaticamente o "rollover" de ano:
+        // new Date(2026, 11 + 1, 15) = 15 de janeiro de 2027 ✓
         const installmentDate = new Date(
-          purchaseDate.getFullYear(),
-          purchaseDate.getMonth() + i,
+          baseYear,
+          baseMonth + i,
           Math.min(card.dueDay, 28) // clamp para evitar overflow de dia 31
         )
 
@@ -154,6 +163,10 @@ export async function POST(req: NextRequest) {
             amount: installmentAmount,
             transactionDate: installmentDate,
             dueDate: installmentDate,
+            // Define competenciaDate igual à installmentDate para garantir
+            // que cada parcela seja contabilizada no mês correto, mesmo se o
+            // usuário mudar a transactionDate depois via edição
+            competenciaDate: installmentDate,
             paidDate: null,
             paymentMethod: "CREDIT",
             status: "PENDING",
