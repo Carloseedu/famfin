@@ -449,6 +449,21 @@ export function TransactionsView() {
   )
 }
 
+// Helper: formata string "2026-12" em "dezembro de 2026" (manual, sem Date, evita bug de fuso)
+function formatCompetencia(competencia: string): string {
+  const meses = [
+    "janeiro", "fevereiro", "março", "abril", "maio", "junho",
+    "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
+  ]
+  const [anoStr, mesStr] = competencia.split("-")
+  const ano = parseInt(anoStr, 10)
+  const mes = parseInt(mesStr, 10)
+  if (mes >= 1 && mes <= 12) {
+    return `${meses[mes - 1]} de ${ano}`
+  }
+  return competencia
+}
+
 function TransactionForm({
   open,
   onOpenChange,
@@ -684,7 +699,7 @@ function TransactionForm({
             </p>
             {competencia && transactionDate && competencia.slice(0, 7) !== transactionDate.slice(0, 7) && (
               <div className="rounded-md bg-blue-50 border border-blue-200 p-2 text-xs text-blue-900">
-                ✓ Esta transação será contabilizada em <strong>{new Date(competencia + "-01").toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}</strong>,
+                ✓ Esta transação será contabilizada em <strong>{formatCompetencia(competencia)}</strong>,
                 não no mês da movimentação.
               </div>
             )}
