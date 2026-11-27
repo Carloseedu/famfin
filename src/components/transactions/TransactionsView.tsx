@@ -911,15 +911,15 @@ function TransactionForm({
                         const parcelas = []
                         for (let i = 0; i < installments && i < 6; i++) {
                           const d = new Date(baseYear, baseMonth + i, Math.min(dueDay, 28))
-                          const formatDate = (dt: Date) => {
+                          const formatParcelDate = (dt: Date) => {
                             const dd = String(dt.getDate()).padStart(2, "0")
                             const mm = String(dt.getMonth() + 1).padStart(2, "0")
                             return `${dd}/${mm}/${dt.getFullYear()}`
                           }
                           parcelas.push(
                             <div key={i}>
-                              Parcela {i + 1}/{installments}:{" "}
-                              <strong>{formatDate(d)}</strong>{" "}
+                              Parcela {i + 1}/{installments}: vence em{" "}
+                              <strong>{formatParcelDate(d)}</strong>{" "}
                               {i === 0 && status === "PAID" && (
                                 <span className="text-emerald-700">(Pago ✓)</span>
                               )}
@@ -933,11 +933,18 @@ function TransactionForm({
                         if (installments > 6) {
                           parcelas.push(<div key="more">... e mais {installments - 6} parcela(s)</div>)
                         }
-                        return <div className="mt-2 pt-2 border-t border-blue-200">{parcelas}</div>
+                        return (
+                          <div className="mt-2 pt-2 border-t border-blue-200">
+                            <div className="text-blue-800 mb-1">
+                              📅 Data da movimentação ({transactionDate.split("-").reverse().join("/")}) será a mesma em todas as parcelas — para você identificar a compra na lista.
+                            </div>
+                            {parcelas}
+                          </div>
+                        )
                       })()}
 
                       <div className="mt-2 text-blue-700">
-                        💡 As datas são baseadas no <strong>dia de vencimento do cartão</strong> ({cards.find((c) => c.id === cardId)?.dueDay || "?"}).
+                        💡 As datas de vencimento são baseadas no <strong>dia de vencimento do cartão</strong> ({cards.find((c) => c.id === cardId)?.dueDay || "?"}).
                         A compra também aparecerá na aba <strong>Cartões</strong>.
                       </div>
                     </div>
